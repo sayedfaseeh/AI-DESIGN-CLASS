@@ -3,166 +3,179 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cindrebay AI Campus — Live Classroom View</title>
+  <title>Cindrebay AI Campus — Live Leaderboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    :root {
-      --blue: #1d4ed8;
-      --blue-light: #eff6ff;
-    }
-    * {
-      box-sizing: border-box;
-    }
+    :root { --blue: #1d4ed8; --gold: #eab308; --silver: #94a3b8; --bronze: #b45309; }
+    * { box-sizing: border-box; }
     body {
-      background: var(--blue-light);
-      font-family: 'Inter', sans-serif;
-      margin: 0;
-      padding: 3rem;
+      font-family: 'Inter', sans-serif; margin: 0;
+      background: linear-gradient(160deg, #0f172a, #1e3a8a);
+      color: white; min-height: 100vh; padding: 2.5rem;
     }
-    .container {
-      display: grid;
-      gap: 2rem;
-      grid-template-columns: 1fr 400px;
+    .title-bar { text-align: center; margin-bottom: 2rem; }
+    .title-bar h1 { font-size: 2rem; font-weight: 800; margin: 0; }
+    .title-bar p { color: #93c5fd; margin: 4px 0 0; font-size: 1rem; }
+
+    .layout { display: grid; grid-template-columns: 1.4fr 1fr; gap: 2rem; align-items: start; }
+
+    .panel { background: rgba(255,255,255,0.06); border-radius: 20px; padding: 1.75rem; backdrop-filter: blur(6px); }
+    .panel h2 { font-size: 1.15rem; margin: 0 0 1.25rem; color: #dbeafe; }
+
+    .podium-row { display: flex; align-items: flex-end; gap: 1rem; margin-bottom: 1.5rem; justify-content: center; }
+    .podium-item { text-align: center; }
+    .podium-avatar {
+      width: 56px; height: 56px; border-radius: 50%; margin: 0 auto 6px;
+      display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.3rem;
     }
-    .card {
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-      padding: 1.5rem;
+    .p1 .podium-avatar { width: 76px; height: 76px; font-size: 1.7rem; background: var(--gold); color: #1e293b; }
+    .p2 .podium-avatar { background: var(--silver); color: #1e293b; }
+    .p3 .podium-avatar { background: var(--bronze); color: white; }
+    .podium-name { font-weight: 700; font-size: 0.95rem; }
+    .podium-xp { color: #cbd5e1; font-size: 0.8rem; }
+    .medal { font-size: 1.4rem; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; color: #93c5fd; font-size: 0.75rem; text-transform: uppercase; padding: 6px 8px; }
+    td { padding: 10px 8px; font-size: 0.95rem; border-top: 1px solid rgba(255,255,255,0.08); }
+    .rank-cell { font-weight: 700; width: 40px; }
+    .tier-tag { font-size: 0.7rem; color: #93c5fd; }
+
+    .feed-item {
+      display: flex; justify-content: space-between; gap: 0.5rem;
+      padding: 10px 0; border-top: 1px solid rgba(255,255,255,0.08); font-size: 0.9rem;
     }
-    h2 {
-      color: var(--blue);
-      font-size: 1.5rem;
-      font-weight: 600;
-      margin: 0 0 1rem;
-    }
-    table {
-      border-collapse: collapse;
-      width: 100%;
-    }
-    th {
-      color: var(--blue);
-      font-size: 1.125rem;
-      padding: 0.5rem;
-      text-align: left;
-    }
-    td {
-      font-size: 2rem;
-      font-weight: 700;
-      padding: 0.5rem;
-    }
-    img {
-      border-radius: 8px;
-      height: 140px;
-      width: 100%;
-      object-fit: cover;
-    }
-    .qr-code {
-      align-items: center;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-    }
-    .qr-code img {
-      height: auto;
-      width: 200px;
-    }
-    .qr-code p {
-      font-size: 1.25rem;
-      font-weight: 500;
-      margin-top: 1rem;
-      text-align: center;
-    }
+    .feed-item:first-child { border-top: none; }
+    .feed-name { font-weight: 600; }
+    .feed-quest { color: #93c5fd; font-size: 0.8rem; }
+    .feed-xp { color: #4ade80; font-weight: 700; white-space: nowrap; }
+
+    .qr-box { text-align: center; margin-top: 1.5rem; }
+    .qr-box canvas { border-radius: 12px; background: white; padding: 10px; }
+    .qr-box p { margin-top: 0.75rem; color: #dbeafe; font-size: 0.9rem; }
+    .empty { color: #93c5fd; text-align: center; padding: 1rem 0; font-size: 0.9rem; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="leaderboard card">
-      <h2>Live Leaderboard</h2>
+  <div class="title-bar">
+    <h1>🎨 AI for Design Professionals</h1>
+    <p>Live Leaderboard · Cindrebay School of Design</p>
+  </div>
+
+  <div class="layout">
+    <div class="panel">
+      <h2>🏆 Leaderboard</h2>
+      <div id="podium"></div>
       <table>
-        <thead>
-          <tr>
-            <th>Rank</th>
-            <th>Name</th>
-            <th>Points</th>
-          </tr>
-        </thead>
-        <tbody id="leaderboard">
-          <tr>
-            <td>🥇</td>
-            <td>Loading...</td>
-            <td>-</td>
-          </tr>
-        </tbody>
+        <thead><tr><th>#</th><th>Name</th><th>Tier</th><th style="text-align:right">XP</th></tr></thead>
+        <tbody id="leaderboardBody"></tbody>
       </table>
     </div>
-    
-    <div class="sidebar">
-      <div class="recent card">
-        <h2>Recent Submissions</h2>
-        <div id="recentSubmissions">
-          <img src="https://via.placeholder.com/400x140?text=Loading...">
-        </div>
+
+    <div>
+      <div class="panel">
+        <h2>✨ Recent Approved Work</h2>
+        <div id="recentFeed"><p class="empty">Waiting for submissions…</p></div>
       </div>
-      
-      <div class="qr-code card">
-        <img id="qrCode" src="https://via.placeholder.com/200?text=QR+Code">
-        <p>Scan to join the AI Campus!</p>
+      <div class="panel qr-box" style="margin-top: 1.5rem;">
+        <div id="qrcode"></div>
+        <p>Scan to join — enter your PIN to start</p>
       </div>
     </div>
   </div>
-  
+
   <script>
-    const leaderboard = document.getElementById('leaderboard');
-    const recentSubmissions = document.getElementById('recentSubmissions');
-    const qrCode = document.getElementById('qrCode');
-    
-    async function fetchLeaderboard() {
-      const res = await fetch('/api/leaderboard');
-      const data = await res.json();
-      
-      leaderboard.innerHTML = data
-        .map(
-          (student, index) => `
-            <tr>
-              <td>${['🥇', '🥈', '🥉'][index] || `#${index + 1}`}</td>
-              <td>${student.name}</td>
-              <td>${student.points}</td>
-            </tr>
-          `
-        )
-        .join('');
+    const SUPABASE_URL = 'https://qoipjrrvouchxvcdrpbj.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvaXBqcnJ2b3VjaHh2Y2RycGJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NjUwNTcsImV4cCI6MjEwNTI0MTA1N30.kMnLYLLwnEXdRDEy1uIzYSaA9I_w4SvmrXL83_Fhggw';
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // QR code points to wherever this projector page itself is hosted, swapped for the login page.
+    // Wrapped in try/catch so a QR failure never blocks the leaderboard/feed logic below.
+    try {
+      const loginUrl = window.location.href.replace(/projector\.html.*$/, 'index.html');
+      new QRCode(document.getElementById('qrcode'), {
+        text: loginUrl,
+        width: 160,
+        height: 160,
+      });
+    } catch (e) {
+      console.error('QR code failed to render:', e);
     }
-    
-    async function fetchRecentSubmissions() {
-      const res = await fetch('/api/recent');
-      const data = await res.json();
-      
-      recentSubmissions.innerHTML = data
-        .map(
-          (submission) => `
-            <img src="${submission.image}">
-          `
-        )
-        .join('');
+
+    async function loadLeaderboard() {
+      const { data: students } = await sb
+        .from('students')
+        .select('*')
+        .order('total_xp', { ascending: false })
+        .limit(15);
+
+      if (!students || students.length === 0) {
+        document.getElementById('podium').innerHTML = '<p class="empty">No students yet.</p>';
+        document.getElementById('leaderboardBody').innerHTML = '';
+        return;
+      }
+
+      const top3 = students.slice(0, 3);
+      const medals = ['🥇', '🥈', '🥉'];
+      const order = top3.length === 3 ? [1, 0, 2] : top3.map((_, i) => i); // 2nd-1st-3rd visual order
+      const podiumHtml = order.filter(i => top3[i]).map(i => {
+        const s = top3[i];
+        const cls = i === 0 ? 'p1' : i === 1 ? 'p2' : 'p3';
+        return `
+          <div class="podium-item ${cls}">
+            <div class="medal">${medals[i]}</div>
+            <div class="podium-avatar">${s.name.charAt(0).toUpperCase()}</div>
+            <div class="podium-name">${s.name}</div>
+            <div class="podium-xp">${s.total_xp} XP</div>
+          </div>
+        `;
+      }).join('');
+      document.getElementById('podium').innerHTML = `<div class="podium-row">${podiumHtml}</div>`;
+
+      document.getElementById('leaderboardBody').innerHTML = students.map((s, i) => `
+        <tr>
+          <td class="rank-cell">${i + 1}</td>
+          <td>${s.name}</td>
+          <td class="tier-tag">${s.tier_level}</td>
+          <td style="text-align:right; font-weight:700;">${s.total_xp}</td>
+        </tr>
+      `).join('');
     }
-    
-    async function fetchQRCode() {
-      const res = await fetch('/api/qr-code');
-      const data = await res.json();
-      
-      qrCode.src = data.url;
+
+    async function loadRecentFeed() {
+      const { data: subs } = await sb
+        .from('submissions')
+        .select('*, students(name), quests(title)')
+        .eq('status', 'Approved')
+        .order('submission_id', { ascending: false })
+        .limit(6);
+
+      const feed = document.getElementById('recentFeed');
+      if (!subs || subs.length === 0) {
+        feed.innerHTML = '<p class="empty">Waiting for submissions…</p>';
+        return;
+      }
+
+      feed.innerHTML = subs.map(s => `
+        <div class="feed-item">
+          <div>
+            <div class="feed-name">${s.students?.name || 'Student'}</div>
+            <div class="feed-quest">${s.quests?.title || s.quest_id}</div>
+          </div>
+          <div class="feed-xp">+${s.xp_awarded} XP</div>
+        </div>
+      `).join('');
     }
-    
-    fetchLeaderboard();
-    setInterval(fetchLeaderboard, 10000);
-    
-    fetchRecentSubmissions();
-    setInterval(fetchRecentSubmissions, 30000);
-    
-    fetchQRCode();
+
+    async function refreshAll() {
+      await Promise.all([loadLeaderboard(), loadRecentFeed()]);
+    }
+
+    refreshAll();
+    setInterval(refreshAll, 6000);
   </script>
 </body>
 </html>
