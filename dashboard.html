@@ -3,260 +3,265 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cindrebay AI Campus — Student Dashboard</title>
-  <script src="https://cdn.jsdelivr.net/npm/js-cookie@3.0.1/dist/js.cookie.min.js"></script>
+  <title>Cindrebay AI Campus — Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --blue: #1d4ed8;
-      --blue-light: #eff6ff;
-      --gray: #6b7280;
-      --gray-light: #f3f4f6;
+      --blue: #1d4ed8; --blue-light: #eff6ff; --gray: #6b7280;
+      --gray-light: #f3f4f6; --green: #16a34a; --gold: #ca8a04; --amber-bg: #fffbeb;
     }
-    * {
-      box-sizing: border-box;
-    }
-    body {
-      font-family: 'Inter', sans-serif;
-      background: var(--blue-light);
-      color: #374151;
-      padding: 0;
-      margin: 0;
-    }
+    * { box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: #f8fafc; color: #1f2937; margin: 0; padding: 0; }
     header {
-      background: white;
-      border-bottom: 1px solid var(--gray-light);
-      padding: 1rem;
-      text-align: center;
+      background: linear-gradient(135deg, #1d4ed8, #1e40af); color: white;
+      padding: 1rem 1.25rem; text-align: center; position: relative;
     }
-    h1 {
-      font-size: 1.25rem;
-      font-weight: 600;
-      margin: 0;
-      color: var(--blue);
+    header h1 { font-size: 1.1rem; font-weight: 700; margin: 0; }
+    #logoutBtn {
+      position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);
+      background: rgba(255,255,255,0.15); border: none; color: white;
+      font-size: 0.75rem; padding: 6px 12px; border-radius: 100px; cursor: pointer;
     }
-    main {
-      max-width: 800px;
-      margin: 2rem auto;
-      padding: 0 1rem;
-    }
-    .profile {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      margin-bottom: 2rem;
+    main { max-width: 760px; margin: 0 auto; padding: 1.25rem; }
+    .profile-card {
+      background: white; border-radius: 14px; padding: 1.5rem;
+      display: flex; align-items: center; gap: 1rem; box-shadow: 0 1px 3px rgb(0 0 0 / 0.06);
     }
     .avatar {
-      width: 80px;
-      height: 80px;
-      border-radius: 50%;
-      object-fit: cover;
+      width: 64px; height: 64px; border-radius: 50%; background: var(--blue-light);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem; font-weight: 700; color: var(--blue); flex-shrink: 0;
     }
-    .profile h2 {
-      font-size: 1.5rem;
-      font-weight: 600;
-      margin: 0;
+    .profile-info { flex: 1; min-width: 0; }
+    .profile-info h2 { font-size: 1.2rem; font-weight: 700; margin: 0 0 2px; }
+    .tier-badge {
+      display: inline-block; font-size: 0.75rem; font-weight: 600; color: var(--gold);
+      background: var(--amber-bg); padding: 2px 10px; border-radius: 100px; margin-bottom: 8px;
     }
-    .profile p {
-      color: var(--gray);
-      margin: 0.25rem 0 0;
-    }
-    .xp-bar {
-      background: var(--gray-light);
-      border-radius: 9999px;
-      height: 12px;
-      margin-top: 1rem;
-      overflow: hidden;
-    }
-    .xp-fill {
-      background: var(--blue);
-      height: 100%;
-      transition: width 0.5s ease;
-    }
-    section {
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
-      margin-top: 2rem;
-      padding: 1.5rem;
-    }
-    h3 {
-      font-size: 1.125rem;
-      font-weight: 500;
-      margin: 0 0 1rem;
-    }
-    .quest-list {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-    }
+    .xp-row { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--gray); margin-bottom: 4px; }
+    .xp-bar { background: var(--gray-light); border-radius: 100px; height: 10px; overflow: hidden; }
+    .xp-fill { background: linear-gradient(90deg, #3b82f6, #1d4ed8); height: 100%; transition: width 0.6s ease; border-radius: 100px; }
+
+    section { margin-top: 1.5rem; }
+    section h3 { font-size: 1rem; font-weight: 700; margin: 0 0 0.75rem; }
+    .quest-grid { display: grid; gap: 0.75rem; }
     .quest {
-      border: 1px solid var(--gray-light);
-      border-radius: 8px;
-      padding: 1rem;
+      background: white; border: 1.5px solid var(--gray-light); border-radius: 12px;
+      padding: 1rem; cursor: pointer; transition: border-color 0.15s;
     }
-    .quest + .quest {
-      margin-top: 1rem; 
+    .quest:hover { border-color: var(--blue); }
+    .quest.selected { border-color: var(--blue); background: var(--blue-light); }
+    .quest-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; }
+    .quest h4 { font-size: 0.95rem; font-weight: 600; margin: 0; }
+    .xp-pill {
+      background: var(--blue); color: white; font-size: 0.7rem; font-weight: 700;
+      padding: 3px 8px; border-radius: 100px; white-space: nowrap;
     }
-    .quest.completed {
-      background: #f0fdf4;
-      border-color: #22c55e;
+    .quest .tool { font-size: 0.8rem; color: var(--gray); margin-top: 4px; }
+    .quest .my-status { font-size: 0.75rem; font-weight: 600; margin-top: 6px; }
+    .status-pending { color: #b45309; }
+    .status-approved { color: var(--green); }
+    .status-iteration { color: #dc2626; }
+
+    .submit-panel {
+      background: white; border-radius: 14px; padding: 1.25rem;
+      box-shadow: 0 1px 3px rgb(0 0 0 / 0.06); margin-top: 1.5rem;
     }
-    .quest h4 {
-      font-size: 1rem;
-      font-weight: 500;
-      margin: 0;
+    .submit-panel.hidden { display: none; }
+    .submit-panel label { display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 0.5rem; }
+    .submit-panel textarea {
+      width: 100%; border: 1.5px solid var(--gray-light); border-radius: 8px;
+      padding: 0.7rem; font-family: inherit; font-size: 0.9rem; resize: vertical; min-height: 70px;
     }
-    .quest p {
-      color: var(--gray);
-      font-size: 0.875rem;
-      margin: 0.5rem 0 0;
+    .submit-panel button {
+      background: var(--blue); color: white; border: none; border-radius: 8px;
+      font-weight: 600; padding: 0.7rem 1.25rem; margin-top: 0.75rem; cursor: pointer; font-size: 0.9rem;
     }
-    form {
-      margin-top: 1rem;
-    }
-    label {
-      display: block;
-      font-size: 0.875rem;
-      font-weight: 500;
-      margin-bottom: 0.5rem;
-    }
-    input,
-    textarea {
-      border: 1px solid var(--gray-light);
-      border-radius: 6px;
-      display: block;
-      font-family: inherit;
-      font-size: 1rem;
-      padding: 0.625rem 0.75rem;
-      width: 100%;
-    }
-    button {
-      background: var(--blue);
-      border: none;
-      border-radius: 6px;
-      color: white;
-      cursor: pointer;
-      font-family: inherit;
-      font-size: 1rem;
-      font-weight: 500;
-      margin-top: 1rem;
-      padding: 0.75rem;
-      width: 100%;
-    }
-    button:hover {
-      background: #1e3a8a;
-    }
+    .submit-panel button:disabled { background: var(--gray); cursor: not-allowed; }
+    #submitMsg { font-size: 0.85rem; margin-top: 0.5rem; }
+    .empty { color: var(--gray); font-size: 0.9rem; text-align: center; padding: 2rem 0; }
   </style>
 </head>
 <body>
   <header>
     <h1>Cindrebay AI Campus</h1>
+    <button id="logoutBtn">Log out</button>
   </header>
-  
+
   <main>
-    <div class="profile">
-      <img id="avatar" class="avatar" alt="Student avatar">
-      <div>
-        <h2 id="name"></h2>
-        <p id="level"></p>
-        <div class="xp-bar">
-          <div id="xpFill" class="xp-fill"></div>
-        </div>
+    <div class="profile-card">
+      <div class="avatar" id="avatarInitial">?</div>
+      <div class="profile-info">
+        <h2 id="studentName">Loading…</h2>
+        <span class="tier-badge" id="tierBadge">—</span>
+        <div class="xp-row"><span id="xpLabel">0 XP</span><span id="nextTierLabel"></span></div>
+        <div class="xp-bar"><div class="xp-fill" id="xpFill" style="width:0%"></div></div>
       </div>
     </div>
 
     <section>
-      <h3>Available Quests</h3>
-      <ul id="questList" class="quest-list"></ul>
+      <h3>Active Quests</h3>
+      <div class="quest-grid" id="questGrid">
+        <p class="empty">Loading quests…</p>
+      </div>
     </section>
 
-    <section>
-      <h3>Submit Quest</h3>
-      <form>
-        <div>
-          <label for="questId">Quest ID:</label>
-          <input type="text" id="questId" required>
-        </div>
-        <div>
-          <label for="submission">Submission URL or Text:</label>
-          <textarea id="submission" rows="4" required></textarea>
-        </div>
-        <button type="submit">Submit</button>
-      </form>
-    </section>
+    <div class="submit-panel hidden" id="submitPanel">
+      <label id="submitLabel">Submit your work</label>
+      <textarea id="submissionText" placeholder="Paste your render link, Canva URL, or describe your work..."></textarea>
+      <button id="submitQuestBtn">Submit Quest</button>
+      <div id="submitMsg"></div>
+    </div>
   </main>
 
   <script>
-    const avatarImg = document.getElementById('avatar');
-    const nameEl = document.getElementById('name');
-    const levelEl = document.getElementById('level');
-    const xpFill = document.getElementById('xpFill');
-    const questList = document.getElementById('questList');
-    const form = document.querySelector('form');
-    
-    const token = Cookies.get('token');
-    if (!token) {
-      window.location.href = '/login';
-    }
-    
-    fetchUserData();
-    fetchQuests();
-    
-    async function fetchUserData() {
-      const res = await fetch('/api/user', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      const { name, avatar, level, xp, xpToNextLevel } = await res.json();
-      
-      avatarImg.src = avatar;
-      nameEl.textContent = name;
-      levelEl.textContent = `Level ${level} - ${xp} XP`;
-      xpFill.style.width = `${(xp / xpToNextLevel) * 100}%`;
-    }
-    
-    async function fetchQuests() {
-      const res = await fetch('/api/quests', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      const quests = await res.json();
-      
-      questList.innerHTML = quests.map(renderQuest).join('');
-    }
-    
-    function renderQuest(quest) {
-      return `
-        <li class="quest ${quest.completed ? 'completed' : ''}">
-          <h4>${quest.title}</h4>
-          <p>${quest.description}</p>
-          <p><strong>Reward:</strong> ${quest.points} XP</p>
-        </li>
-      `;
-    }
-    
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const questId = form.questId.value;
-      const submission = form.submission.value;
-      
-      await fetch('/api/submit', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ questId, submission }),
-      });
-      
-      form.reset();
-      fetchQuests();
+    const SUPABASE_URL = 'https://qoipjrrvouchxvcdrpbj.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvaXBqcnJ2b3VjaHh2Y2RycGJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NjUwNTcsImV4cCI6MjEwNTI0MTA1N30.kMnLYLLwnEXdRDEy1uIzYSaA9I_w4SvmrXL83_Fhggw';
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const session = JSON.parse(localStorage.getItem('cindrebay_student') || 'null');
+    if (!session) window.location.href = 'index.html';
+
+    let selectedQuestId = null;
+    let myApprovedQuestIds = new Set();
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('cindrebay_student');
+      window.location.href = 'index.html';
     });
+
+    function tierNextThreshold(xp) {
+      if (xp < 100) return 100;
+      if (xp < 500) return 500;
+      return null;
+    }
+
+    async function loadProfile() {
+      const { data, error } = await sb
+        .from('students')
+        .select('*')
+        .eq('student_id', session.student_id)
+        .single();
+
+      if (error || !data) {
+        console.error(error);
+        return;
+      }
+
+      document.getElementById('studentName').textContent = data.name;
+      document.getElementById('avatarInitial').textContent = data.name.charAt(0).toUpperCase();
+      document.getElementById('tierBadge').textContent = data.tier_level;
+      document.getElementById('xpLabel').textContent = `${data.total_xp} XP`;
+
+      const next = tierNextThreshold(data.total_xp);
+      document.getElementById('nextTierLabel').textContent = next ? `${next} XP to next tier` : 'Max tier reached';
+      const pct = next ? Math.min(100, (data.total_xp / next) * 100) : 100;
+      document.getElementById('xpFill').style.width = pct + '%';
+    }
+
+    async function loadQuestsAndSubmissions() {
+      const [{ data: quests, error: qErr }, { data: mySubs, error: sErr }] = await Promise.all([
+        sb.from('quests').select('*').eq('status', 'Active').order('quest_id'),
+        sb.from('submissions').select('*').eq('student_id', session.student_id),
+      ]);
+
+      if (qErr) console.error(qErr);
+      if (sErr) console.error(sErr);
+
+      const grid = document.getElementById('questGrid');
+
+      if (!quests || quests.length === 0) {
+        grid.innerHTML = '<p class="empty">No quests active yet — your teacher will activate them as the class progresses.</p>';
+        return;
+      }
+
+      const subsByQuest = {};
+      (mySubs || []).forEach(s => { subsByQuest[s.quest_id] = s; });
+      myApprovedQuestIds = new Set((mySubs || []).filter(s => s.status === 'Approved').map(s => s.quest_id));
+
+      grid.innerHTML = quests.map(q => {
+        const mySub = subsByQuest[q.quest_id];
+        let statusHtml = '';
+        if (mySub) {
+          if (mySub.status === 'Approved') statusHtml = `<div class="my-status status-approved">✓ Approved · +${mySub.xp_awarded} XP</div>`;
+          else if (mySub.status === 'Pending Review') statusHtml = `<div class="my-status status-pending">⏳ Pending review</div>`;
+          else statusHtml = `<div class="my-status status-iteration">↻ Needs another try</div>`;
+        }
+        return `
+          <div class="quest" data-quest-id="${q.quest_id}" data-quest-title="${q.title}">
+            <div class="quest-top">
+              <h4>${q.title}</h4>
+              <span class="xp-pill">+${q.points_xp} XP</span>
+            </div>
+            <div class="tool">${q.required_tool || ''}</div>
+            ${statusHtml}
+          </div>
+        `;
+      }).join('');
+
+      grid.querySelectorAll('.quest').forEach(el => {
+        el.addEventListener('click', () => selectQuest(el.dataset.questId, el.dataset.questTitle));
+      });
+    }
+
+    function selectQuest(questId, questTitle) {
+      selectedQuestId = questId;
+      document.querySelectorAll('.quest').forEach(el => {
+        el.classList.toggle('selected', el.dataset.questId === questId);
+      });
+      document.getElementById('submitLabel').textContent = `Submit: ${questTitle}`;
+      document.getElementById('submitPanel').classList.remove('hidden');
+      document.getElementById('submitMsg').textContent = '';
+      document.getElementById('submissionText').value = '';
+      document.getElementById('submitPanel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    document.getElementById('submitQuestBtn').addEventListener('click', async () => {
+      const text = document.getElementById('submissionText').value.trim();
+      const msg = document.getElementById('submitMsg');
+      const btn = document.getElementById('submitQuestBtn');
+
+      if (!selectedQuestId) return;
+      if (!text) {
+        msg.style.color = '#dc2626';
+        msg.textContent = 'Please paste a link or describe your work first.';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Submitting...';
+
+      const { error } = await sb.rpc('submit_quest', {
+        p_student_id: session.student_id,
+        p_pin: session.pin,
+        p_quest_id: selectedQuestId,
+        p_image_or_link: text,
+      });
+
+      btn.disabled = false;
+      btn.textContent = 'Submit Quest';
+
+      if (error) {
+        msg.style.color = '#dc2626';
+        msg.textContent = 'Submission failed. Please try again.';
+        console.error(error);
+        return;
+      }
+
+      msg.style.color = '#16a34a';
+      msg.textContent = 'Submitted! Your teacher will review it shortly.';
+      document.getElementById('submissionText').value = '';
+      loadQuestsAndSubmissions();
+    });
+
+    async function refreshAll() {
+      await Promise.all([loadProfile(), loadQuestsAndSubmissions()]);
+    }
+
+    refreshAll();
+    setInterval(refreshAll, 15000); // keep XP/quest status fresh during class
   </script>
 </body>
 </html>
