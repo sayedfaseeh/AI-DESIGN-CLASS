@@ -3,129 +3,129 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cindrebay AI Campus — Student Portal Login</title>
-  <script src="https://cdn.jsdelivr.net/npm/js-cookie@3.0.1/dist/js.cookie.min.js"></script>
+  <title>Cindrebay AI Campus — Student Login</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
   <style>
     :root {
-      --blue: #1d4ed8;
-      --blue-light: #eff6ff;
-      --gray: #6b7280;
-      --gray-light: #f3f4f6;
+      --blue: #1d4ed8; --blue-dark: #1e3a8a; --blue-light: #eff6ff;
+      --gray: #6b7280; --gray-light: #f3f4f6; --red: #dc2626;
     }
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
     body {
       font-family: 'Inter', sans-serif;
-      background: var(--blue-light);
-      padding: 0;
-      margin: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
+      background: linear-gradient(160deg, #eff6ff 0%, #dbeafe 100%);
+      margin: 0; padding: 0; min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
     }
     main {
-      background: white;
-      border-radius: 12px;
-      box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-      width: 90%;
-      max-width: 400px;
-      padding: 2rem;
+      background: white; border-radius: 16px;
+      box-shadow: 0 20px 40px -12px rgb(29 78 216 / 0.2);
+      width: 90%; max-width: 400px; padding: 2.5rem;
     }
-    h1 {
-      font-size: 1.5rem;
-      font-weight: 600;
-      margin: 0 0 2rem;
-      color: var(--blue);
+    .badge {
+      display: inline-block; background: var(--blue-light); color: var(--blue);
+      font-size: 0.75rem; font-weight: 600; padding: 4px 10px; border-radius: 100px;
+      margin-bottom: 1rem; letter-spacing: 0.02em;
     }
-    form {
-      display: flex;
-      flex-direction: column;
-      gap: 1.5rem;
-    }
-    label {
-      display: block;
-      font-size: 0.875rem;
-      font-weight: 500;
-      margin-bottom: 0.5rem;
-      color: var(--gray);
-    }
+    h1 { font-size: 1.5rem; font-weight: 700; margin: 0 0 0.25rem; color: #111827; }
+    .sub { color: var(--gray); font-size: 0.9rem; margin: 0 0 2rem; }
+    label { display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem; color: #374151; }
     input {
-      border: 1px solid var(--gray-light);
-      border-radius: 6px;
-      padding: 0.625rem 0.75rem;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 1rem;
-      color: var(--gray);
-      width: 100%;
+      border: 1.5px solid var(--gray-light); border-radius: 8px;
+      padding: 0.75rem; font-family: 'JetBrains Mono', monospace;
+      font-size: 1.25rem; letter-spacing: 0.3em; text-align: center;
+      color: #111827; width: 100%; transition: border-color 0.15s;
     }
+    input:focus { outline: none; border-color: var(--blue); }
     button {
-      background: var(--blue);
-      color: white;
-      border: none;
-      border-radius: 6px;
-      font-size: 1rem;
-      font-family: inherit;
-      font-weight: 500;
-      padding: 0.75rem;
-      cursor: pointer;
-      transition: background-color 0.15s ease;
+      background: var(--blue); color: white; border: none; border-radius: 8px;
+      font-size: 1rem; font-family: inherit; font-weight: 600; padding: 0.85rem;
+      cursor: pointer; width: 100%; margin-top: 1.25rem; transition: background-color 0.15s;
     }
-    button:hover {
-      background: #1e3a8a;
-    }
-    #message {
-      color: #dc2626;
-      font-size: 0.875rem;
-      margin-top: 1rem;
-      text-align: center; 
-    }
+    button:hover { background: var(--blue-dark); }
+    button:disabled { background: var(--gray); cursor: not-allowed; }
+    #message { color: var(--red); font-size: 0.875rem; margin-top: 1rem; text-align: center; min-height: 1.2em; }
+    .teacher-link { text-align: center; margin-top: 1.5rem; }
+    .teacher-link a { color: var(--gray); font-size: 0.8rem; text-decoration: none; }
+    .teacher-link a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
   <main>
+    <span class="badge">AI FOR DESIGN PROFESSIONALS</span>
     <h1>Cindrebay AI Campus</h1>
-    <form>
-      <div>
-        <label for="pin">Enter your 4-digit Student PIN:</label>
-        <input type="password" id="pin" maxlength="4" autocomplete="off" inputmode="numeric" pattern="[0-9]*">
-      </div>
-      <button type="submit">Log In</button>
+    <p class="sub">Enter your 4-digit PIN to start earning XP</p>
+    <form id="loginForm">
+      <label for="pin">Student PIN</label>
+      <input type="password" id="pin" maxlength="4" autocomplete="off" inputmode="numeric" pattern="[0-9]*" placeholder="••••" required>
+      <button type="submit" id="submitBtn">Log In</button>
+      <div id="message"></div>
     </form>
-    <div id="message"></div>
+    <div class="teacher-link">
+      <a href="admin.html">Teacher login →</a> &nbsp;|&nbsp; <a href="projector.html">Projector view →</a>
+    </div>
   </main>
+
   <script>
-    const form = document.querySelector('form');
+    const SUPABASE_URL = 'https://qoipjrrvouchxvcdrpbj.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvaXBqcnJ2b3VjaHh2Y2RycGJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NjUwNTcsImV4cCI6MjEwNTI0MTA1N30.kMnLYLLwnEXdRDEy1uIzYSaA9I_w4SvmrXL83_Fhggw';
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const form = document.getElementById('loginForm');
     const pinInput = document.getElementById('pin');
     const message = document.getElementById('message');
-    
+    const submitBtn = document.getElementById('submitBtn');
+
+    // If already logged in, skip straight to dashboard
+    const saved = localStorage.getItem('cindrebay_student');
+    if (saved) window.location.href = 'dashboard.html';
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const pin = pinInput.value;
-      
-      try {
-        const res = await fetch('/api/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pin }),
-        });
-        
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.message);
-        }
-        
-        const { token } = await res.json();
-        Cookies.set('token', token);
-        window.location.href = '/student-dashboard';
-        
-      } catch (err) {
-        message.textContent = err.message;
+      const pin = pinInput.value.trim();
+      message.textContent = '';
+
+      if (pin.length !== 4) {
+        message.textContent = 'Please enter your 4-digit PIN.';
+        return;
       }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Checking...';
+
+      try {
+        const { data, error } = await sb.rpc('student_login', { p_pin: pin });
+
+        if (error) throw new Error(error.message);
+        if (!data || data.length === 0) {
+          message.textContent = 'PIN not recognized. Check with your teacher.';
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Log In';
+          return;
+        }
+
+        const student = data[0];
+        // Store student session locally (pin is re-verified server-side on every write)
+        localStorage.setItem('cindrebay_student', JSON.stringify({
+          student_id: student.student_id,
+          name: student.name,
+          pin: pin,
+        }));
+
+        window.location.href = 'dashboard.html';
+      } catch (err) {
+        message.textContent = 'Something went wrong. Please try again.';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Log In';
+        console.error(err);
+      }
+    });
+
+    // Only allow numeric input
+    pinInput.addEventListener('input', () => {
+      pinInput.value = pinInput.value.replace(/[^0-9]/g, '');
     });
   </script>
 </body>
