@@ -4,268 +4,342 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cindrebay AI Campus — Admin Terminal</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --blue: #1d4ed8;
-      --green: #22c55e;
-      --red: #ef4444;
-      --gray: #6b7280;
-      --gray-light: #f3f4f6;
+      --blue: #1d4ed8; --green: #16a34a; --red: #dc2626; --gray: #6b7280;
+      --gray-light: #f3f4f6; --amber: #b45309; --amber-bg: #fef3c7;
     }
-    * {
-      box-sizing: border-box;
+    * { box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; margin: 0; background: #f8fafc; color: #1f2937; }
+
+    /* ---- Login gate ---- */
+    #loginGate {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(160deg, #1e3a8a, #1d4ed8);
     }
-    body {
-      font-family: 'Inter', sans-serif;
-      margin: 0;
-      padding: 0;
+    #loginGate .card {
+      background: white; border-radius: 14px; padding: 2rem; width: 90%; max-width: 360px;
     }
+    #loginGate h1 { font-size: 1.2rem; margin: 0 0 1.25rem; }
+    #loginGate input {
+      width: 100%; border: 1.5px solid var(--gray-light); border-radius: 8px;
+      padding: 0.7rem; font-size: 1rem; margin-bottom: 0.75rem;
+    }
+    #loginGate button {
+      width: 100%; background: var(--blue); color: white; border: none; border-radius: 8px;
+      padding: 0.75rem; font-weight: 600; cursor: pointer; font-size: 0.95rem;
+    }
+    #gateMsg { color: var(--red); font-size: 0.85rem; margin-top: 0.5rem; min-height: 1.2em; }
+
+    /* ---- Main app ---- */
+    #app { display: none; }
     header {
-      align-items: center;
-      background: var(--blue);
-      color: white;
-      display: flex;
-      justify-content: space-between;
-      padding: 1rem;
+      background: var(--blue); color: white; padding: 1rem 1.5rem;
+      display: flex; justify-content: space-between; align-items: center;
     }
-    h1 {
-      font-size: 1.25rem;
-      font-weight: 600;
-      margin: 0;
+    header h1 { font-size: 1.1rem; margin: 0; }
+    header button {
+      background: rgba(255,255,255,0.15); border: none; color: white;
+      padding: 6px 14px; border-radius: 100px; cursor: pointer; font-size: 0.8rem;
     }
-    button {
-      background: white;
-      border: none;
-      border-radius: 6px;
-      color: var(--blue);
-      cursor: pointer;
-      font-family: inherit;
-      font-size: 1rem;
-      font-weight: 500;
-      padding: 0.5rem 1rem;
+    main { max-width: 1000px; margin: 0 auto; padding: 1.5rem; }
+    section { margin-bottom: 2rem; }
+    section h2 { font-size: 1.05rem; margin: 0 0 0.75rem; }
+
+    .card-list { display: grid; gap: 0.6rem; }
+    .row-card {
+      background: white; border-radius: 10px; padding: 0.9rem 1.1rem;
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+      box-shadow: 0 1px 3px rgb(0 0 0 / 0.05); flex-wrap: wrap;
     }
-    main {
-      padding: 2rem;
+    .row-main { flex: 1; min-width: 200px; }
+    .row-title { font-weight: 600; font-size: 0.95rem; }
+    .row-sub { font-size: 0.8rem; color: var(--gray); margin-top: 2px; }
+    .tag { font-size: 0.7rem; font-weight: 700; padding: 3px 9px; border-radius: 100px; text-transform: uppercase; }
+    .tag.active { background: #dcfce7; color: var(--green); }
+    .tag.inactive { background: var(--gray-light); color: var(--gray); }
+    .tag.pending { background: var(--amber-bg); color: var(--amber); }
+    .tag.approved { background: #dcfce7; color: var(--green); }
+    .tag.iteration { background: #fee2e2; color: var(--red); }
+    .row-actions { display: flex; gap: 0.5rem; align-items: center; }
+    .btn {
+      border: none; border-radius: 6px; padding: 6px 12px; font-size: 0.8rem;
+      font-weight: 600; cursor: pointer;
     }
-    table {
-      background: white;
-      border-radius: 6px;
-      box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-      border-collapse: collapse;
-      margin-top: 2rem;
-      width: 100%;
+    .btn-primary { background: var(--blue); color: white; }
+    .btn-green { background: var(--green); color: white; }
+    .btn-red { background: var(--red); color: white; }
+    .btn-ghost { background: var(--gray-light); color: #374151; }
+    .xp-input {
+      width: 55px; border: 1px solid var(--gray-light); border-radius: 6px;
+      padding: 5px; font-size: 0.85rem; text-align: center;
     }
-    th {
-      background: var(--gray-light);
-      border-top: 1px solid var(--gray-light);
-      color: var(--gray);
-      font-size: 0.875rem;
-      font-weight: 500;
-      padding: 0.75rem 1rem;
-      text-align: left;
+    .link-preview { font-size: 0.8rem; color: var(--blue); word-break: break-all; }
+    .empty { color: var(--gray); font-size: 0.9rem; text-align: center; padding: 1.5rem 0; }
+
+    .add-student-form {
+      background: white; border-radius: 10px; padding: 1rem; display: flex; gap: 0.6rem; flex-wrap: wrap;
     }
-    td {
-      border-top: 1px solid var(--gray-light);
-      padding: 1rem;
-    }
-    tr:nth-child(even) td {
-      background: var(--gray-light);
-    }
-    .tag {
-      border-radius: 9999px;
-      font-size: 0.75rem;
-      font-weight: 500;
-      padding: 0.25rem 0.625rem;
-      text-transform: uppercase;
-    }
-    .tag.active {
-      background: var(--blue);
-      color: white;
-    }
-    .tag.inactive {
-      background: var(--gray);
-      color: white;
-    }
-    .status {
-      display: inline-block;
-      border-radius: 9999px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      padding: 0.375rem 0.625rem;
-      text-transform: uppercase; 
-    }
-    .pending {
-      background: #fef08a;
-      color: #854d0e;
-    }
-    .approved {
-      background: #dcfce7;
-      color: #166534;
-    }
-    .rejected {
-      background: #fee2e2;
-      color: #991b1b;
-    }
-    .actions {
-      display: flex;
-      gap: 0.5rem;
-    }
-    .actions button {
-      padding: 0.375rem 0.75rem;
+    .add-student-form input {
+      flex: 1; min-width: 120px; border: 1px solid var(--gray-light); border-radius: 6px; padding: 8px;
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Cindrebay AI Campus - Admin Terminal</h1>
-    <button id="logoutBtn">Log Out</button>
-  </header>
-  
-  <main>
-    <h2>Quest Management</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Quest ID</th>
-          <th>Title</th>
-          <th>Points</th>
-          <th>Status</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody id="questTableBody"></tbody>
-    </table>
 
-    <h2>Student Submissions</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Student</th>
-          <th>Quest</th>
-          <th>Submission</th>
-          <th>Status</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody id="submissionTableBody"></tbody>
-    </table>
-  </main>
+  <div id="loginGate">
+    <div class="card">
+      <h1>🔑 Teacher Login</h1>
+      <input type="password" id="teacherKeyInput" placeholder="Teacher key">
+      <button id="gateBtn">Enter Admin Terminal</button>
+      <div id="gateMsg"></div>
+    </div>
+  </div>
+
+  <div id="app">
+    <header>
+      <h1>Cindrebay AI Campus — Admin Terminal</h1>
+      <button id="logoutBtn">Log out</button>
+    </header>
+
+    <main>
+      <section>
+        <h2>Add Student</h2>
+        <div class="add-student-form">
+          <input type="text" id="newName" placeholder="Full name">
+          <input type="text" id="newRole" placeholder="Studio role (e.g. Interior Designer)">
+          <input type="text" id="newPin" placeholder="4-digit PIN" maxlength="4">
+          <button class="btn btn-primary" id="addStudentBtn">Add</button>
+        </div>
+        <div id="addStudentMsg" style="margin-top:0.5rem; font-size:0.85rem;"></div>
+      </section>
+
+      <section>
+        <h2>Quest Control</h2>
+        <div class="card-list" id="questList"><p class="empty">Loading…</p></div>
+      </section>
+
+      <section>
+        <h2>Pending Submissions</h2>
+        <div class="card-list" id="pendingList"><p class="empty">Loading…</p></div>
+      </section>
+
+      <section>
+        <h2>Students &amp; Quick XP</h2>
+        <div class="card-list" id="studentList"><p class="empty">Loading…</p></div>
+      </section>
+    </main>
+  </div>
 
   <script>
-    const questTableBody = document.getElementById('questTableBody');
-    const submissionTableBody = document.getElementById('submissionTableBody');
-    const logoutBtn = document.getElementById('logoutBtn');
+    const SUPABASE_URL = 'https://qoipjrrvouchxvcdrpbj.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvaXBqcnJ2b3VjaHh2Y2RycGJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NjUwNTcsImV4cCI6MjEwNTI0MTA1N30.kMnLYLLwnEXdRDEy1uIzYSaA9I_w4SvmrXL83_Fhggw';
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    logoutBtn.addEventListener('click', logout);
-    
-    fetchQuests();
-    fetchSubmissions();
-    
-    async function fetchQuests() {
-      const res = await fetch('/api/admin/quests');
-      const quests = await res.json();
-      
-      questTableBody.innerHTML = quests.map(renderQuest).join('');
+    let teacherKey = sessionStorage.getItem('cindrebay_teacher_key');
+
+    async function tryEnter(key) {
+      const { data, error } = await sb.rpc('verify_teacher_key', { p_key: key });
+      if (error || !data) return false;
+      teacherKey = key;
+      sessionStorage.setItem('cindrebay_teacher_key', key);
+      return true;
     }
-    
-    function renderQuest(quest) {
-      return `
-        <tr>
-          <td>${quest.id}</td>
-          <td>${quest.title}</td>
-          <td>${quest.points}</td>
-          <td>
-            <span class="tag ${quest.active ? 'active' : 'inactive'}">
-              ${quest.active ? 'Active' : 'Inactive'}
-            </span>
-          </td>
-          <td class="actions">
-            <button data-id="${quest.id}" class="activateBtn">
-              ${quest.active ? 'Deactivate' : 'Activate'}
-            </button>
-          </td>
-        </tr>
-      `;
-    }
-    
-    async function fetchSubmissions() {
-      const res = await fetch('/api/admin/submissions');
-      const submissions = await res.json();
-      
-      submissionTableBody.innerHTML = submissions.map(renderSubmission).join('');
-    }
-    
-    function renderSubmission(submission) {
-      return `
-        <tr>
-          <td>${submission.student}</td>
-          <td>${submission.questId}</td>
-          <td>
-            <a href="${submission.url}" target="_blank">
-              ${submission.url}
-            </a>
-          </td>
-          <td>
-            <span class="status ${submission.status}">
-              ${submission.status}
-            </span>
-          </td>
-          <td class="actions">
-            <button data-id="${submission.id}" data-points="${submission.questPoints}" class="approveBtn">
-              Approve
-            </button>
-            <button data-id="${submission.id}" class="rejectBtn">
-              Reject
-            </button>
-          </td>
-        </tr>
-      `;
-    }
-    
-    async function logout() {
-      await fetch('/api/logout', { method: 'POST' });
-      window.location.href = '/login';
-    }
-    
-    async function updateQuest(id, active) {
-      await fetch(`/api/admin/quests/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ active }),
-      });
-      fetchQuests();
-    }
-    
-    async function updateSubmission(id, status, points = 0) {
-      await fetch(`/api/admin/submissions/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status, points }),
-      });
-      fetchSubmissions();
-    }
-    
-    questTableBody.addEventListener('click', (e) => {
-      if (e.target.matches('.activateBtn')) {
-        const id = e.target.dataset.id;
-        const active = e.target.textContent === 'Activate';
-        updateQuest(id, active);
+
+    async function boot() {
+      if (teacherKey) {
+        const ok = await tryEnter(teacherKey);
+        if (ok) { showApp(); return; }
       }
+      document.getElementById('loginGate').style.display = 'flex';
+    }
+
+    document.getElementById('gateBtn').addEventListener('click', async () => {
+      const key = document.getElementById('teacherKeyInput').value.trim();
+      const msg = document.getElementById('gateMsg');
+      if (!key) return;
+      const ok = await tryEnter(key);
+      if (ok) { showApp(); }
+      else { msg.textContent = 'Incorrect teacher key.'; }
     });
-    
-    submissionTableBody.addEventListener('click', (e) => {
-      const id = e.target.dataset.id;
-      
-      if (e.target.matches('.approveBtn')) {
-        const points = parseInt(e.target.dataset.points);
-        updateSubmission(id, 'approved', points);
-      } else if (e.target.matches('.rejectBtn')) {
-        updateSubmission(id, 'rejected');
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      sessionStorage.removeItem('cindrebay_teacher_key');
+      window.location.reload();
+    });
+
+    function showApp() {
+      document.getElementById('loginGate').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      refreshAll();
+      setInterval(refreshAll, 8000);
+    }
+
+    async function refreshAll() {
+      await Promise.all([loadQuests(), loadPendingSubmissions(), loadStudents()]);
+    }
+
+    // ---------- Quests ----------
+    async function loadQuests() {
+      const { data: quests } = await sb.from('quests').select('*').order('quest_id');
+      const list = document.getElementById('questList');
+      if (!quests || quests.length === 0) { list.innerHTML = '<p class="empty">No quests found.</p>'; return; }
+
+      list.innerHTML = quests.map(q => `
+        <div class="row-card">
+          <div class="row-main">
+            <div class="row-title">${q.quest_id} · ${q.title}</div>
+            <div class="row-sub">${q.required_tool || ''} · +${q.points_xp} XP</div>
+          </div>
+          <span class="tag ${q.status === 'Active' ? 'active' : 'inactive'}">${q.status}</span>
+          <div class="row-actions">
+            <button class="btn ${q.status === 'Active' ? 'btn-ghost' : 'btn-primary'}" data-quest="${q.quest_id}" data-newstatus="${q.status === 'Active' ? 'Inactive' : 'Active'}">
+              ${q.status === 'Active' ? 'Deactivate' : 'Activate'}
+            </button>
+          </div>
+        </div>
+      `).join('');
+
+      list.querySelectorAll('button[data-quest]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          btn.disabled = true;
+          await sb.rpc('set_quest_status', {
+            p_teacher_key: teacherKey,
+            p_quest_id: btn.dataset.quest,
+            p_status: btn.dataset.newstatus,
+          });
+          loadQuests();
+        });
+      });
+    }
+
+    // ---------- Pending submissions ----------
+    async function loadPendingSubmissions() {
+      const { data: subs } = await sb
+        .from('submissions')
+        .select('*, students(name), quests(title, points_xp)')
+        .eq('status', 'Pending Review')
+        .order('submission_id', { ascending: false });
+
+      const list = document.getElementById('pendingList');
+      if (!subs || subs.length === 0) { list.innerHTML = '<p class="empty">No pending submissions right now.</p>'; return; }
+
+      list.innerHTML = subs.map(s => `
+        <div class="row-card">
+          <div class="row-main">
+            <div class="row-title">${s.students?.name || 'Unknown'} — ${s.quests?.title || s.quest_id}</div>
+            <div class="row-sub link-preview">${(s.image_or_link || '').slice(0, 80)}</div>
+          </div>
+          <span class="tag pending">Pending</span>
+          <div class="row-actions">
+            <input type="number" class="xp-input" value="${s.quests?.points_xp || 0}" id="xp-${s.submission_id}">
+            <button class="btn btn-green" data-approve="${s.submission_id}">Approve</button>
+            <button class="btn btn-red" data-reject="${s.submission_id}">Needs Work</button>
+          </div>
+        </div>
+      `).join('');
+
+      list.querySelectorAll('button[data-approve]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.approve;
+          const xp = parseInt(document.getElementById(`xp-${id}`).value) || 0;
+          btn.disabled = true;
+          await sb.rpc('review_submission', {
+            p_teacher_key: teacherKey,
+            p_submission_id: parseInt(id),
+            p_status: 'Approved',
+            p_xp_awarded: xp,
+          });
+          refreshAll();
+        });
+      });
+
+      list.querySelectorAll('button[data-reject]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.reject;
+          btn.disabled = true;
+          await sb.rpc('review_submission', {
+            p_teacher_key: teacherKey,
+            p_submission_id: parseInt(id),
+            p_status: 'Needs Iteration',
+            p_xp_awarded: 0,
+          });
+          refreshAll();
+        });
+      });
+    }
+
+    // ---------- Students + quick XP ----------
+    async function loadStudents() {
+      const { data: students } = await sb.from('students').select('*').order('total_xp', { ascending: false });
+      const list = document.getElementById('studentList');
+      if (!students || students.length === 0) { list.innerHTML = '<p class="empty">No students yet — add one above.</p>'; return; }
+
+      list.innerHTML = students.map(s => `
+        <div class="row-card">
+          <div class="row-main">
+            <div class="row-title">${s.name}</div>
+            <div class="row-sub">${s.studio_role || ''} · ${s.tier_level} · ${s.total_xp} XP · PIN ${s.pin_code}</div>
+          </div>
+          <div class="row-actions">
+            <button class="btn btn-ghost" data-quickxp="${s.student_id}" data-amount="10">+10</button>
+            <button class="btn btn-ghost" data-quickxp="${s.student_id}" data-amount="25">+25</button>
+          </div>
+        </div>
+      `).join('');
+
+      list.querySelectorAll('button[data-quickxp]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          btn.disabled = true;
+          await sb.rpc('award_quick_xp', {
+            p_teacher_key: teacherKey,
+            p_student_id: parseInt(btn.dataset.quickxp),
+            p_xp: parseInt(btn.dataset.amount),
+          });
+          loadStudents();
+        });
+      });
+    }
+
+    // ---------- Add student ----------
+    document.getElementById('addStudentBtn').addEventListener('click', async () => {
+      const name = document.getElementById('newName').value.trim();
+      const role = document.getElementById('newRole').value.trim();
+      const pin = document.getElementById('newPin').value.trim();
+      const msg = document.getElementById('addStudentMsg');
+
+      if (!name || pin.length !== 4) {
+        msg.style.color = '#dc2626';
+        msg.textContent = 'Name and a 4-digit PIN are required.';
+        return;
       }
+
+      const { error } = await sb.rpc('create_student', {
+        p_teacher_key: teacherKey,
+        p_name: name,
+        p_studio_role: role,
+        p_pin: pin,
+      });
+
+      if (error) {
+        msg.style.color = '#dc2626';
+        msg.textContent = 'Could not add student (PIN may already be in use).';
+        console.error(error);
+        return;
+      }
+
+      msg.style.color = '#16a34a';
+      msg.textContent = `Added ${name} with PIN ${pin}.`;
+      document.getElementById('newName').value = '';
+      document.getElementById('newRole').value = '';
+      document.getElementById('newPin').value = '';
+      loadStudents();
     });
+
+    boot();
   </script>
 </body>
 </html>
