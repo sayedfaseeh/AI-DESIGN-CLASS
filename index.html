@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cindrebay AI Campus — Student Portal Login</title>
+  <script src="https://cdn.jsdelivr.net/npm/js-cookie@3.0.1/dist/js.cookie.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --blue: #1d4ed8;
+      --blue-light: #eff6ff;
+      --gray: #6b7280;
+      --gray-light: #f3f4f6;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--blue-light);
+      padding: 0;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    main {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+      width: 90%;
+      max-width: 400px;
+      padding: 2rem;
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin: 0 0 2rem;
+      color: var(--blue);
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+      color: var(--gray);
+    }
+    input {
+      border: 1px solid var(--gray-light);
+      border-radius: 6px;
+      padding: 0.625rem 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1rem;
+      color: var(--gray);
+      width: 100%;
+    }
+    button {
+      background: var(--blue);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-family: inherit;
+      font-weight: 500;
+      padding: 0.75rem;
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+    }
+    button:hover {
+      background: #1e3a8a;
+    }
+    #message {
+      color: #dc2626;
+      font-size: 0.875rem;
+      margin-top: 1rem;
+      text-align: center; 
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Cindrebay AI Campus</h1>
+    <form>
+      <div>
+        <label for="pin">Enter your 4-digit Student PIN:</label>
+        <input type="password" id="pin" maxlength="4" autocomplete="off" inputmode="numeric" pattern="[0-9]*">
+      </div>
+      <button type="submit">Log In</button>
+    </form>
+    <div id="message"></div>
+  </main>
+  <script>
+    const form = document.querySelector('form');
+    const pinInput = document.getElementById('pin');
+    const message = document.getElementById('message');
+    
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const pin = pinInput.value;
+      
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin }),
+        });
+        
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.message);
+        }
+        
+        const { token } = await res.json();
+        Cookies.set('token', token);
+        window.location.href = '/student-dashboard';
+        
+      } catch (err) {
+        message.textContent = err.message;
+      }
+    });
+  </script>
+</body>
+</html>

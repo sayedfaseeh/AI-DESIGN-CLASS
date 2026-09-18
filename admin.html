@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cindrebay AI Campus — Admin Terminal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --blue: #1d4ed8;
+      --green: #22c55e;
+      --red: #ef4444;
+      --gray: #6b7280;
+      --gray-light: #f3f4f6;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      align-items: center;
+      background: var(--blue);
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      padding: 1rem;
+    }
+    h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin: 0;
+    }
+    button {
+      background: white;
+      border: none;
+      border-radius: 6px;
+      color: var(--blue);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 500;
+      padding: 0.5rem 1rem;
+    }
+    main {
+      padding: 2rem;
+    }
+    table {
+      background: white;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+      border-collapse: collapse;
+      margin-top: 2rem;
+      width: 100%;
+    }
+    th {
+      background: var(--gray-light);
+      border-top: 1px solid var(--gray-light);
+      color: var(--gray);
+      font-size: 0.875rem;
+      font-weight: 500;
+      padding: 0.75rem 1rem;
+      text-align: left;
+    }
+    td {
+      border-top: 1px solid var(--gray-light);
+      padding: 1rem;
+    }
+    tr:nth-child(even) td {
+      background: var(--gray-light);
+    }
+    .tag {
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      padding: 0.25rem 0.625rem;
+      text-transform: uppercase;
+    }
+    .tag.active {
+      background: var(--blue);
+      color: white;
+    }
+    .tag.inactive {
+      background: var(--gray);
+      color: white;
+    }
+    .status {
+      display: inline-block;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.375rem 0.625rem;
+      text-transform: uppercase; 
+    }
+    .pending {
+      background: #fef08a;
+      color: #854d0e;
+    }
+    .approved {
+      background: #dcfce7;
+      color: #166534;
+    }
+    .rejected {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    .actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .actions button {
+      padding: 0.375rem 0.75rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Cindrebay AI Campus - Admin Terminal</h1>
+    <button id="logoutBtn">Log Out</button>
+  </header>
+  
+  <main>
+    <h2>Quest Management</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Quest ID</th>
+          <th>Title</th>
+          <th>Points</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="questTableBody"></tbody>
+    </table>
+
+    <h2>Student Submissions</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th>Quest</th>
+          <th>Submission</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="submissionTableBody"></tbody>
+    </table>
+  </main>
+
+  <script>
+    const questTableBody = document.getElementById('questTableBody');
+    const submissionTableBody = document.getElementById('submissionTableBody');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    logoutBtn.addEventListener('click', logout);
+    
+    fetchQuests();
+    fetchSubmissions();
+    
+    async function fetchQuests() {
+      const res = await fetch('/api/admin/quests');
+      const quests = await res.json();
+      
+      questTableBody.innerHTML = quests.map(renderQuest).join('');
+    }
+    
+    function renderQuest(quest) {
+      return `
+        <tr>
+          <td>${quest.id}</td>
+          <td>${quest.title}</td>
+          <td>${quest.points}</td>
+          <td>
+            <span class="tag ${quest.active ? 'active' : 'inactive'}">
+              ${quest.active ? 'Active' : 'Inactive'}
+            </span>
+          </td>
+          <td class="actions">
+            <button data-id="${quest.id}" class="activateBtn">
+              ${quest.active ? 'Deactivate' : 'Activate'}
+            </button>
+          </td>
+        </tr>
+      `;
+    }
+    
+    async function fetchSubmissions() {
+      const res = await fetch('/api/admin/submissions');
+      const submissions = await res.json();
+      
+      submissionTableBody.innerHTML = submissions.map(renderSubmission).join('');
+    }
+    
+    function renderSubmission(submission) {
+      return `
+        <tr>
+          <td>${submission.student}</td>
+          <td>${submission.questId}</td>
+          <td>
+            <a href="${submission.url}" target="_blank">
+              ${submission.url}
+            </a>
+          </td>
+          <td>
+            <span class="status ${submission.status}">
+              ${submission.status}
+            </span>
+          </td>
+          <td class="actions">
+            <button data-id="${submission.id}" data-points="${submission.questPoints}" class="approveBtn">
+              Approve
+            </button>
+            <button data-id="${submission.id}" class="rejectBtn">
+              Reject
+            </button>
+          </td>
+        </tr>
+      `;
+    }
+    
+    async function logout() {
+      await fetch('/api/logout', { method: 'POST' });
+      window.location.href = '/login';
+    }
+    
+    async function updateQuest(id, active) {
+      await fetch(`/api/admin/quests/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active }),
+      });
+      fetchQuests();
+    }
+    
+    async function updateSubmission(id, status, points = 0) {
+      await fetch(`/api/admin/submissions/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status, points }),
+      });
+      fetchSubmissions();
+    }
+    
+    questTableBody.addEventListener('click', (e) => {
+      if (e.target.matches('.activateBtn')) {
+        const id = e.target.dataset.id;
+        const active = e.target.textContent === 'Activate';
+        updateQuest(id, active);
+      }
+    });
+    
+    submissionTableBody.addEventListener('click', (e) => {
+      const id = e.target.dataset.id;
+      
+      if (e.target.matches('.approveBtn')) {
+        const points = parseInt(e.target.dataset.points);
+        updateSubmission(id, 'approved', points);
+      } else if (e.target.matches('.rejectBtn')) {
+        updateSubmission(id, 'rejected');
+      }
+    });
+  </script>
+</body>
+</html>

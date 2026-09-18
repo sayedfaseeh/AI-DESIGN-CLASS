@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cindrebay AI Campus — Live Classroom View</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --blue: #1d4ed8;
+      --blue-light: #eff6ff;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      background: var(--blue-light);
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      padding: 3rem;
+    }
+    .container {
+      display: grid;
+      gap: 2rem;
+      grid-template-columns: 1fr 400px;
+    }
+    .card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+      padding: 1.5rem;
+    }
+    h2 {
+      color: var(--blue);
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin: 0 0 1rem;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    th {
+      color: var(--blue);
+      font-size: 1.125rem;
+      padding: 0.5rem;
+      text-align: left;
+    }
+    td {
+      font-size: 2rem;
+      font-weight: 700;
+      padding: 0.5rem;
+    }
+    img {
+      border-radius: 8px;
+      height: 140px;
+      width: 100%;
+      object-fit: cover;
+    }
+    .qr-code {
+      align-items: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .qr-code img {
+      height: auto;
+      width: 200px;
+    }
+    .qr-code p {
+      font-size: 1.25rem;
+      font-weight: 500;
+      margin-top: 1rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="leaderboard card">
+      <h2>Live Leaderboard</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Name</th>
+            <th>Points</th>
+          </tr>
+        </thead>
+        <tbody id="leaderboard">
+          <tr>
+            <td>🥇</td>
+            <td>Loading...</td>
+            <td>-</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    
+    <div class="sidebar">
+      <div class="recent card">
+        <h2>Recent Submissions</h2>
+        <div id="recentSubmissions">
+          <img src="https://via.placeholder.com/400x140?text=Loading...">
+        </div>
+      </div>
+      
+      <div class="qr-code card">
+        <img id="qrCode" src="https://via.placeholder.com/200?text=QR+Code">
+        <p>Scan to join the AI Campus!</p>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    const leaderboard = document.getElementById('leaderboard');
+    const recentSubmissions = document.getElementById('recentSubmissions');
+    const qrCode = document.getElementById('qrCode');
+    
+    async function fetchLeaderboard() {
+      const res = await fetch('/api/leaderboard');
+      const data = await res.json();
+      
+      leaderboard.innerHTML = data
+        .map(
+          (student, index) => `
+            <tr>
+              <td>${['🥇', '🥈', '🥉'][index] || `#${index + 1}`}</td>
+              <td>${student.name}</td>
+              <td>${student.points}</td>
+            </tr>
+          `
+        )
+        .join('');
+    }
+    
+    async function fetchRecentSubmissions() {
+      const res = await fetch('/api/recent');
+      const data = await res.json();
+      
+      recentSubmissions.innerHTML = data
+        .map(
+          (submission) => `
+            <img src="${submission.image}">
+          `
+        )
+        .join('');
+    }
+    
+    async function fetchQRCode() {
+      const res = await fetch('/api/qr-code');
+      const data = await res.json();
+      
+      qrCode.src = data.url;
+    }
+    
+    fetchLeaderboard();
+    setInterval(fetchLeaderboard, 10000);
+    
+    fetchRecentSubmissions();
+    setInterval(fetchRecentSubmissions, 30000);
+    
+    fetchQRCode();
+  </script>
+</body>
+</html>

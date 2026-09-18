@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cindrebay AI Campus — Student Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/js-cookie@3.0.1/dist/js.cookie.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --blue: #1d4ed8;
+      --blue-light: #eff6ff;
+      --gray: #6b7280;
+      --gray-light: #f3f4f6;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--blue-light);
+      color: #374151;
+      padding: 0;
+      margin: 0;
+    }
+    header {
+      background: white;
+      border-bottom: 1px solid var(--gray-light);
+      padding: 1rem;
+      text-align: center;
+    }
+    h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin: 0;
+      color: var(--blue);
+    }
+    main {
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+    .profile {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .avatar {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    .profile h2 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin: 0;
+    }
+    .profile p {
+      color: var(--gray);
+      margin: 0.25rem 0 0;
+    }
+    .xp-bar {
+      background: var(--gray-light);
+      border-radius: 9999px;
+      height: 12px;
+      margin-top: 1rem;
+      overflow: hidden;
+    }
+    .xp-fill {
+      background: var(--blue);
+      height: 100%;
+      transition: width 0.5s ease;
+    }
+    section {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+      margin-top: 2rem;
+      padding: 1.5rem;
+    }
+    h3 {
+      font-size: 1.125rem;
+      font-weight: 500;
+      margin: 0 0 1rem;
+    }
+    .quest-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .quest {
+      border: 1px solid var(--gray-light);
+      border-radius: 8px;
+      padding: 1rem;
+    }
+    .quest + .quest {
+      margin-top: 1rem; 
+    }
+    .quest.completed {
+      background: #f0fdf4;
+      border-color: #22c55e;
+    }
+    .quest h4 {
+      font-size: 1rem;
+      font-weight: 500;
+      margin: 0;
+    }
+    .quest p {
+      color: var(--gray);
+      font-size: 0.875rem;
+      margin: 0.5rem 0 0;
+    }
+    form {
+      margin-top: 1rem;
+    }
+    label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+    }
+    input,
+    textarea {
+      border: 1px solid var(--gray-light);
+      border-radius: 6px;
+      display: block;
+      font-family: inherit;
+      font-size: 1rem;
+      padding: 0.625rem 0.75rem;
+      width: 100%;
+    }
+    button {
+      background: var(--blue);
+      border: none;
+      border-radius: 6px;
+      color: white;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 500;
+      margin-top: 1rem;
+      padding: 0.75rem;
+      width: 100%;
+    }
+    button:hover {
+      background: #1e3a8a;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Cindrebay AI Campus</h1>
+  </header>
+  
+  <main>
+    <div class="profile">
+      <img id="avatar" class="avatar" alt="Student avatar">
+      <div>
+        <h2 id="name"></h2>
+        <p id="level"></p>
+        <div class="xp-bar">
+          <div id="xpFill" class="xp-fill"></div>
+        </div>
+      </div>
+    </div>
+
+    <section>
+      <h3>Available Quests</h3>
+      <ul id="questList" class="quest-list"></ul>
+    </section>
+
+    <section>
+      <h3>Submit Quest</h3>
+      <form>
+        <div>
+          <label for="questId">Quest ID:</label>
+          <input type="text" id="questId" required>
+        </div>
+        <div>
+          <label for="submission">Submission URL or Text:</label>
+          <textarea id="submission" rows="4" required></textarea>
+        </div>
+        <button type="submit">Submit</button>
+      </form>
+    </section>
+  </main>
+
+  <script>
+    const avatarImg = document.getElementById('avatar');
+    const nameEl = document.getElementById('name');
+    const levelEl = document.getElementById('level');
+    const xpFill = document.getElementById('xpFill');
+    const questList = document.getElementById('questList');
+    const form = document.querySelector('form');
+    
+    const token = Cookies.get('token');
+    if (!token) {
+      window.location.href = '/login';
+    }
+    
+    fetchUserData();
+    fetchQuests();
+    
+    async function fetchUserData() {
+      const res = await fetch('/api/user', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      const { name, avatar, level, xp, xpToNextLevel } = await res.json();
+      
+      avatarImg.src = avatar;
+      nameEl.textContent = name;
+      levelEl.textContent = `Level ${level} - ${xp} XP`;
+      xpFill.style.width = `${(xp / xpToNextLevel) * 100}%`;
+    }
+    
+    async function fetchQuests() {
+      const res = await fetch('/api/quests', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      const quests = await res.json();
+      
+      questList.innerHTML = quests.map(renderQuest).join('');
+    }
+    
+    function renderQuest(quest) {
+      return `
+        <li class="quest ${quest.completed ? 'completed' : ''}">
+          <h4>${quest.title}</h4>
+          <p>${quest.description}</p>
+          <p><strong>Reward:</strong> ${quest.points} XP</p>
+        </li>
+      `;
+    }
+    
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const questId = form.questId.value;
+      const submission = form.submission.value;
+      
+      await fetch('/api/submit', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ questId, submission }),
+      });
+      
+      form.reset();
+      fetchQuests();
+    });
+  </script>
+</body>
+</html>
