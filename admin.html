@@ -81,11 +81,22 @@
     .empty { color: var(--gray); font-size: 0.9rem; text-align: center; padding: 1.5rem 0; }
 
     .add-student-form {
-      background: white; border-radius: 10px; padding: 1rem; display: flex; gap: 0.6rem; flex-wrap: wrap;
+      background: white; border-radius: 10px; padding: 1rem; display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-end;
+    }
+    .add-student-form .field {
+      flex: 1; min-width: 140px; display: flex; flex-direction: column; gap: 4px;
+    }
+    .add-student-form .field.field-pin { flex: 0 0 110px; min-width: 110px; }
+    .add-student-form label {
+      font-size: 0.75rem; font-weight: 600; color: var(--gray); text-transform: uppercase; letter-spacing: 0.03em;
     }
     .add-student-form input {
-      flex: 1; min-width: 120px; border: 1px solid var(--gray-light); border-radius: 6px; padding: 8px;
+      border: 1px solid var(--gray-light); border-radius: 6px; padding: 8px; font-size: 0.95rem;
     }
+    .add-student-form input:focus {
+      outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(29,78,216,0.12);
+    }
+    .add-student-form button { align-self: flex-end; height: 38px; }
   </style>
 </head>
 <body>
@@ -109,9 +120,18 @@
       <section>
         <h2>Add Student</h2>
         <div class="add-student-form">
-          <input type="text" id="newName" placeholder="Full name">
-          <input type="text" id="newRole" placeholder="Studio role (e.g. Interior Designer)">
-          <input type="text" id="newPin" placeholder="4-digit PIN" maxlength="4">
+          <div class="field">
+            <label for="newName">Full name</label>
+            <input type="text" id="newName" placeholder="e.g. Rila Nafeesa">
+          </div>
+          <div class="field">
+            <label for="newRole">Studio role</label>
+            <input type="text" id="newRole" placeholder="e.g. Interior Designer">
+          </div>
+          <div class="field field-pin">
+            <label for="newPin">4-digit PIN</label>
+            <input type="text" id="newPin" placeholder="e.g. 7454" maxlength="4" inputmode="numeric" pattern="[0-9]*">
+          </div>
           <button class="btn btn-primary" id="addStudentBtn">Add</button>
         </div>
         <div id="addStudentMsg" style="margin-top:0.5rem; font-size:0.85rem;"></div>
@@ -311,9 +331,19 @@
       const pin = document.getElementById('newPin').value.trim();
       const msg = document.getElementById('addStudentMsg');
 
-      if (!name || pin.length !== 4) {
+      if (!name && pin.length !== 4) {
         msg.style.color = '#dc2626';
-        msg.textContent = 'Name and a 4-digit PIN are required.';
+        msg.textContent = 'Please fill in the Full Name and 4-digit PIN fields.';
+        return;
+      }
+      if (!name) {
+        msg.style.color = '#dc2626';
+        msg.textContent = 'Full Name is empty — check you typed it in the first box.';
+        return;
+      }
+      if (pin.length !== 4) {
+        msg.style.color = '#dc2626';
+        msg.textContent = 'PIN must be exactly 4 digits.';
         return;
       }
 
