@@ -177,13 +177,26 @@
       regBtn.textContent = 'Submitting...';
 
       try {
-        const { error } = await sb.rpc('register_student', { p_name: name, p_studio_role: role });
+        const { data, error } = await sb.rpc('register_student', { p_name: name, p_studio_role: role });
         if (error) throw new Error(error.message);
 
+        const pin = data && data[0] ? data[0].assigned_pin : null;
+
         regMsg.style.color = '#16a34a';
-        regMsg.textContent = 'Request sent! Your teacher will approve you and share your PIN shortly.';
+        regMsg.innerHTML = pin
+          ? `Welcome, ${name.split(' ')[0]}! Your PIN is <strong style="font-family:'JetBrains Mono',monospace; font-size:1.1em; letter-spacing:0.1em;">${pin}</strong> — save it, you'll need it to log in.<br><a href="#" id="continueToLoginLink" style="color:var(--pink); font-weight:600;">Continue to login →</a>`
+          : 'Registered! Ask your teacher for your PIN.';
         document.getElementById('regName').value = '';
         document.getElementById('regRole').value = '';
+
+        const continueLink = document.getElementById('continueToLoginLink');
+        if (continueLink && pin) {
+          continueLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            toggleLink.click();
+            pinInput.value = pin;
+          });
+        }
       } catch (err) {
         regMsg.style.color = '#dc2626';
         regMsg.textContent = 'Something went wrong. Please try again.';
