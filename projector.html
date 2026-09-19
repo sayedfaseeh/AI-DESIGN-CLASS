@@ -9,11 +9,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    :root { --blue: #1d4ed8; --gold: #eab308; --silver: #94a3b8; --bronze: #b45309; }
+    :root { --blue: #B74094; --pink: #B74094; --gold: #eab308; --silver: #94a3b8; --bronze: #b45309; }
     * { box-sizing: border-box; }
     body {
       font-family: 'Inter', sans-serif; margin: 0;
-      background: linear-gradient(160deg, #0f172a, #1e3a8a);
+      background: linear-gradient(160deg, #2b1024, #6b1f56);
       color: white; min-height: 100vh; padding: 2.5rem;
     }
     .title-bar { text-align: center; margin-bottom: 2rem; }
@@ -61,6 +61,7 @@
 </head>
 <body>
   <div class="title-bar">
+    <img src="logo.svg" alt="Cindrebay School of Design" style="height:52px; margin-bottom:0.75rem; filter:brightness(0) invert(1);">
     <h1>🎨 AI for Design Professionals</h1>
     <p>Live Leaderboard · Cindrebay School of Design</p>
   </div>
@@ -145,6 +146,35 @@
       `).join('');
     }
 
+    let __lastSeenSubmissionId = null;
+    let __audioCtx = null;
+
+    function playDing() {
+      try {
+        if (!__audioCtx) __audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const ctx = __audioCtx;
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = 'sine';
+        o.frequency.setValueAtTime(880, ctx.currentTime);
+        o.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.12);
+        g.gain.setValueAtTime(0.0001, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.5);
+        o.start();
+        o.stop(ctx.currentTime + 0.5);
+      } catch (e) { /* audio not available, fail silently */ }
+    }
+
+    function flashPanel() {
+      const panel = document.querySelector('.panel');
+      if (!panel) return;
+      panel.style.transition = 'box-shadow 0.3s ease';
+      panel.style.boxShadow = '0 0 0 3px #4ade80, 0 0 40px rgba(74,222,128,0.6)';
+      setTimeout(() => { panel.style.boxShadow = ''; }, 1200);
+    }
+
     async function loadRecentFeed() {
       const { data: subs } = await sb
         .from('submissions')
@@ -158,6 +188,13 @@
         feed.innerHTML = '<p class="empty">Waiting for submissions…</p>';
         return;
       }
+
+      const topId = subs[0].submission_id;
+      if (__lastSeenSubmissionId !== null && topId !== __lastSeenSubmissionId) {
+        playDing();
+        flashPanel();
+      }
+      __lastSeenSubmissionId = topId;
 
       feed.innerHTML = subs.map(s => `
         <div class="feed-item">
