@@ -9,7 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --blue: #1d4ed8; --green: #16a34a; --red: #dc2626; --gray: #6b7280;
+      --blue: #B74094; --pink: #B74094; --pink-dark: #8f3175; --green: #16a34a; --red: #dc2626; --gray: #6b7280;
       --gray-light: #f3f4f6; --amber: #b45309; --amber-bg: #fef3c7;
     }
     * { box-sizing: border-box; }
@@ -18,7 +18,7 @@
     /* ---- Login gate ---- */
     #loginGate {
       min-height: 100vh; display: flex; align-items: center; justify-content: center;
-      background: linear-gradient(160deg, #1e3a8a, #1d4ed8);
+      background: linear-gradient(160deg, #8f3175, #B74094);
     }
     #loginGate .card {
       background: white; border-radius: 14px; padding: 2rem; width: 90%; max-width: 360px;
@@ -77,7 +77,10 @@
       width: 55px; border: 1px solid var(--gray-light); border-radius: 6px;
       padding: 5px; font-size: 0.85rem; text-align: center;
     }
-    .link-preview { font-size: 0.8rem; color: var(--blue); word-break: break-all; }
+    .link-preview { font-size: 0.8rem; color: var(--pink); word-break: break-all; }
+    .submission-thumb { max-width: 140px; max-height: 100px; border-radius: 6px; margin-top: 6px; display: block; border: 1px solid var(--gray-light); }
+    .pdf-link { display: inline-block; margin-top: 6px; font-size: 0.85rem; color: var(--pink); text-decoration: none; font-weight: 600; }
+    .pdf-link:hover { text-decoration: underline; }
     .empty { color: var(--gray); font-size: 0.9rem; text-align: center; padding: 1.5rem 0; }
 
     .add-student-form {
@@ -118,6 +121,11 @@
 
     <main>
       <section>
+        <h2>Recent Sign-Ups</h2>
+        <div class="card-list" id="pendingRegList"><p class="empty">Loading…</p></div>
+      </section>
+
+      <section>
         <h2>Add Student</h2>
         <div class="add-student-form">
           <div class="field">
@@ -149,6 +157,7 @@
 
       <section>
         <h2>Students &amp; Quick XP</h2>
+        <input type="text" id="studentSearch" placeholder="Search by name, role, or PIN…" style="width:100%; border:1px solid var(--gray-light); border-radius:8px; padding:10px 12px; font-size:0.9rem; margin-bottom:0.75rem; box-sizing:border-box;">
         <div class="card-list" id="studentList"><p class="empty">Loading…</p></div>
       </section>
     </main>
@@ -199,7 +208,32 @@
     }
 
     async function refreshAll() {
-      await Promise.all([loadQuests(), loadPendingSubmissions(), loadStudents()]);
+      await Promise.all([loadRecentSignups(), loadQuests(), loadPendingSubmissions(), loadStudents()]);
+    }
+
+    // ---------- Recent Sign-Ups (informational log — access is already active) ----------
+    async function loadRecentSignups() {
+      const { data: recent } = await sb
+        .from('students')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(8);
+
+      const list = document.getElementById('pendingRegList');
+      if (!recent || recent.length === 0) {
+        list.innerHTML = '<p class="empty">No sign-ups yet.</p>';
+        return;
+      }
+
+      list.innerHTML = recent.map(s => `
+        <div class="row-card">
+          <div class="row-main">
+            <div class="row-title">${s.name}</div>
+            <div class="row-sub">${s.studio_role || 'No role given'} · PIN ${s.pin_code || '—'}</div>
+          </div>
+          <span class="tag ${s.is_active ? 'active' : 'inactive'}">${s.is_active ? 'Active' : 'Deactivated'}</span>
+        </div>
+      `).join('');
     }
 
     // ---------- Quests ----------
@@ -247,11 +281,22 @@
       const list = document.getElementById('pendingList');
       if (!subs || subs.length === 0) { list.innerHTML = '<p class="empty">No pending submissions right now.</p>'; return; }
 
-      list.innerHTML = subs.map(s => `
+      list.innerHTML = subs.map(s => {
+        let fileHtml = '';
+        if (s.file_path) {
+          const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/submissions/${s.file_path}`;
+          if (s.file_type === 'image') {
+            fileHtml = `<a href="${publicUrl}" target="_blank"><img src="${publicUrl}" alt="Submission file" class="submission-thumb"></a>`;
+          } else {
+            fileHtml = `<a href="${publicUrl}" target="_blank" class="pdf-link">📄 View PDF</a>`;
+          }
+        }
+        return `
         <div class="row-card">
           <div class="row-main">
             <div class="row-title">${s.students?.name || 'Unknown'} — ${s.quests?.title || s.quest_id}</div>
-            <div class="row-sub link-preview">${(s.image_or_link || '').slice(0, 80)}</div>
+            ${s.image_or_link ? `<div class="row-sub link-preview">${s.image_or_link.slice(0, 80)}</div>` : ''}
+            ${fileHtml}
           </div>
           <span class="tag pending">Pending</span>
           <div class="row-actions">
@@ -260,7 +305,8 @@
             <button class="btn btn-red" data-reject="${s.submission_id}">Needs Work</button>
           </div>
         </div>
-      `).join('');
+      `;
+      }).join('');
 
       list.querySelectorAll('button[data-approve]').forEach(btn => {
         btn.addEventListener('click', async () => {
@@ -292,21 +338,42 @@
       });
     }
 
-    // ---------- Students + quick XP ----------
+    // ---------- Students + quick XP + management ----------
+    let __allStudents = [];
+
     async function loadStudents() {
       const { data: students } = await sb.from('students').select('*').order('total_xp', { ascending: false });
-      const list = document.getElementById('studentList');
-      if (!students || students.length === 0) { list.innerHTML = '<p class="empty">No students yet — add one above.</p>'; return; }
+      __allStudents = students || [];
+      renderStudentList();
+    }
 
-      list.innerHTML = students.map(s => `
-        <div class="row-card">
+    function renderStudentList() {
+      const query = (document.getElementById('studentSearch').value || '').toLowerCase().trim();
+      const filtered = query
+        ? __allStudents.filter(s =>
+            (s.name || '').toLowerCase().includes(query) ||
+            (s.studio_role || '').toLowerCase().includes(query) ||
+            (s.pin_code || '').includes(query))
+        : __allStudents;
+
+      const list = document.getElementById('studentList');
+      if (!filtered || filtered.length === 0) {
+        list.innerHTML = `<p class="empty">${query ? 'No students match your search.' : 'No students yet — add one above.'}</p>`;
+        return;
+      }
+
+      list.innerHTML = filtered.map(s => `
+        <div class="row-card" style="${s.is_active ? '' : 'opacity:0.55;'}">
           <div class="row-main">
-            <div class="row-title">${s.name}</div>
-            <div class="row-sub">${s.studio_role || ''} · ${s.tier_level} · ${s.total_xp} XP · PIN ${s.pin_code}</div>
+            <div class="row-title">${s.name} ${s.is_active ? '' : '<span class="tag inactive" style="margin-left:6px;">Deactivated</span>'}</div>
+            <div class="row-sub">${s.studio_role || ''} · ${s.tier_level} · ${s.total_xp} XP · PIN ${s.pin_code || '—'}</div>
           </div>
           <div class="row-actions">
             <button class="btn btn-ghost" data-quickxp="${s.student_id}" data-amount="10">+10</button>
             <button class="btn btn-ghost" data-quickxp="${s.student_id}" data-amount="25">+25</button>
+            <button class="btn btn-ghost" data-edit="${s.student_id}">Edit</button>
+            <button class="btn ${s.is_active ? 'btn-ghost' : 'btn-green'}" data-toggleactive="${s.student_id}" data-newactive="${s.is_active ? 'false' : 'true'}">${s.is_active ? 'Deactivate' : 'Reactivate'}</button>
+            <button class="btn btn-red" data-delete="${s.student_id}">Delete</button>
           </div>
         </div>
       `).join('');
@@ -322,11 +389,64 @@
           loadStudents();
         });
       });
+
+      list.querySelectorAll('button[data-toggleactive]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          btn.disabled = true;
+          await sb.rpc('set_student_active', {
+            p_teacher_key: teacherKey,
+            p_student_id: parseInt(btn.dataset.toggleactive),
+            p_active: btn.dataset.newactive === 'true',
+          });
+          loadStudents();
+        });
+      });
+
+      list.querySelectorAll('button[data-delete]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = parseInt(btn.dataset.delete);
+          const student = __allStudents.find(s => s.student_id === id);
+          if (!confirm(`Permanently delete ${student ? student.name : 'this student'}? This also deletes all their submissions and cannot be undone.\\n\\nClick Cancel if you only want to deactivate them instead.`)) return;
+          btn.disabled = true;
+          const { error } = await sb.rpc('delete_student', { p_teacher_key: teacherKey, p_student_id: id });
+          if (error) { alert('Could not delete student.'); console.error(error); }
+          loadStudents();
+        });
+      });
+
+      list.querySelectorAll('button[data-edit]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = parseInt(btn.dataset.edit);
+          const student = __allStudents.find(s => s.student_id === id);
+          if (!student) return;
+          const newName = prompt('Full name:', student.name);
+          if (newName === null) return;
+          const newRole = prompt('Studio role:', student.studio_role || '');
+          if (newRole === null) return;
+          const newPin = prompt('4-digit PIN:', student.pin_code || '');
+          if (newPin === null) return;
+          if (!/^\d{4}$/.test(newPin)) { alert('PIN must be exactly 4 digits.'); return; }
+
+          sb.rpc('update_student', {
+            p_teacher_key: teacherKey,
+            p_student_id: id,
+            p_name: newName.trim(),
+            p_studio_role: newRole.trim(),
+            p_pin: newPin,
+          }).then(({ error }) => {
+            if (error) { alert('Could not update student (PIN may already be in use).'); console.error(error); }
+            loadStudents();
+          });
+        });
+      });
     }
+
+    document.getElementById('studentSearch').addEventListener('input', renderStudentList);
 
     // ---------- Add student ----------
     document.getElementById('addStudentBtn').addEventListener('click', async () => {
       const name = document.getElementById('newName').value.trim();
+
       const role = document.getElementById('newRole').value.trim();
       const pin = document.getElementById('newPin').value.trim();
       const msg = document.getElementById('addStudentMsg');
