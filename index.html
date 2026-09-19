@@ -9,62 +9,81 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
   <style>
     :root {
-      --blue: #1d4ed8; --blue-dark: #1e3a8a; --blue-light: #eff6ff;
-      --gray: #6b7280; --gray-light: #f3f4f6; --red: #dc2626;
+      --pink: #B74094; --pink-dark: #8f3175; --pink-light: #fbeef7;
+      --charcoal: #424143; --olive: #A6A970; --gray: #6b7280; --gray-light: #f3f4f6; --red: #dc2626;
     }
     * { box-sizing: border-box; }
     body {
       font-family: 'Inter', sans-serif;
-      background: linear-gradient(160deg, #eff6ff 0%, #dbeafe 100%);
+      background: linear-gradient(160deg, #fbeef7 0%, #f3e4ee 100%);
       margin: 0; padding: 0; min-height: 100vh;
       display: flex; align-items: center; justify-content: center;
     }
     main {
       background: white; border-radius: 16px;
-      box-shadow: 0 20px 40px -12px rgb(29 78 216 / 0.2);
-      width: 90%; max-width: 400px; padding: 2.5rem;
+      box-shadow: 0 20px 40px -12px rgb(183 64 148 / 0.25);
+      width: 90%; max-width: 400px; padding: 2.25rem 2.5rem 2.5rem;
     }
+    .logo { display: block; width: 100%; max-width: 220px; height: auto; margin: 0 auto 1.25rem; }
     .badge {
-      display: inline-block; background: var(--blue-light); color: var(--blue);
+      display: block; text-align: center; background: var(--pink-light); color: var(--pink);
       font-size: 0.75rem; font-weight: 600; padding: 4px 10px; border-radius: 100px;
-      margin-bottom: 1rem; letter-spacing: 0.02em;
+      margin: 0 auto 1rem; letter-spacing: 0.02em; width: fit-content;
     }
-    h1 { font-size: 1.5rem; font-weight: 700; margin: 0 0 0.25rem; color: #111827; }
-    .sub { color: var(--gray); font-size: 0.9rem; margin: 0 0 2rem; }
+    h1 { font-size: 1.4rem; font-weight: 700; margin: 0 0 0.25rem; color: var(--charcoal); text-align: center; }
+    .sub { color: var(--gray); font-size: 0.9rem; margin: 0 0 1.75rem; text-align: center; }
     label { display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem; color: #374151; }
     input {
       border: 1.5px solid var(--gray-light); border-radius: 8px;
       padding: 0.75rem; font-family: 'JetBrains Mono', monospace;
       font-size: 1.25rem; letter-spacing: 0.3em; text-align: center;
-      color: #111827; width: 100%; transition: border-color 0.15s;
+      color: var(--charcoal); width: 100%; transition: border-color 0.15s;
     }
-    input:focus { outline: none; border-color: var(--blue); }
+    input:focus { outline: none; border-color: var(--pink); }
     button {
-      background: var(--blue); color: white; border: none; border-radius: 8px;
+      background: var(--pink); color: white; border: none; border-radius: 8px;
       font-size: 1rem; font-family: inherit; font-weight: 600; padding: 0.85rem;
       cursor: pointer; width: 100%; margin-top: 1.25rem; transition: background-color 0.15s;
     }
-    button:hover { background: var(--blue-dark); }
+    button:hover { background: var(--pink-dark); }
     button:disabled { background: var(--gray); cursor: not-allowed; }
     #message { color: var(--red); font-size: 0.875rem; margin-top: 1rem; text-align: center; min-height: 1.2em; }
     .teacher-link { text-align: center; margin-top: 1.5rem; }
     .teacher-link a { color: var(--gray); font-size: 0.8rem; text-decoration: none; }
-    .teacher-link a:hover { text-decoration: underline; }
+    .teacher-link a:hover { color: var(--pink); text-decoration: underline; }
+    #registerForm label { text-align: left; }
+    #registerForm input { text-transform: none; }
+    #regMessage { color: var(--red); font-size: 0.875rem; margin-top: 1rem; text-align: center; min-height: 1.2em; }
   </style>
 </head>
 <body>
   <main>
+    <img class="logo" alt="Cindrebay School of Design" src="logo.svg">
     <span class="badge">AI FOR DESIGN PROFESSIONALS</span>
-    <h1>Cindrebay AI Campus</h1>
+    <h1>AI Campus</h1>
     <p class="sub">Enter your 4-digit PIN to start earning XP</p>
     <form id="loginForm">
       <label for="pin">Student PIN</label>
-      <input type="password" id="pin" maxlength="4" autocomplete="off" inputmode="numeric" pattern="[0-9]*" placeholder="••••" required>
+      <input type="password" id="pin" maxlength="4" autocomplete="off" inputmode="numeric" pattern="[0-9]*" placeholder="****" required>
       <button type="submit" id="submitBtn">Log In</button>
       <div id="message"></div>
     </form>
+
+    <form id="registerForm" style="display:none;">
+      <label for="regName">Full name</label>
+      <input type="text" id="regName" style="letter-spacing:normal; font-family:'Inter',sans-serif; font-size:1rem; text-align:left; margin-bottom:0.9rem;" placeholder="e.g. Rila Nafeesa" required>
+      <label for="regRole">Studio role</label>
+      <input type="text" id="regRole" style="letter-spacing:normal; font-family:'Inter',sans-serif; font-size:1rem; text-align:left;" placeholder="e.g. Interior Designer">
+      <button type="submit" id="registerBtn">Request Access</button>
+      <div id="regMessage"></div>
+    </form>
+
+    <div class="toggle-link" style="text-align:center; margin-top:1.1rem;">
+      <a href="#" id="toggleModeLink" style="color:var(--pink); font-size:0.85rem; font-weight:600; text-decoration:none;">New here? Register for a PIN</a>
+    </div>
+
     <div class="teacher-link">
-      <a href="admin.html">Teacher login →</a> &nbsp;|&nbsp; <a href="projector.html">Projector view →</a>
+      <a href="admin.html">Teacher login</a> &nbsp;|&nbsp; <a href="projector.html">Projector view</a>
     </div>
   </main>
 
@@ -78,7 +97,6 @@
     const message = document.getElementById('message');
     const submitBtn = document.getElementById('submitBtn');
 
-    // If already logged in, skip straight to dashboard
     const saved = localStorage.getItem('cindrebay_student');
     if (saved) window.location.href = 'dashboard.html';
 
@@ -107,7 +125,6 @@
         }
 
         const student = data[0];
-        // Store student session locally (pin is re-verified server-side on every write)
         localStorage.setItem('cindrebay_student', JSON.stringify({
           student_id: student.student_id,
           name: student.name,
@@ -123,9 +140,58 @@
       }
     });
 
-    // Only allow numeric input
     pinInput.addEventListener('input', () => {
       pinInput.value = pinInput.value.replace(/[^0-9]/g, '');
+    });
+
+    // ---- Register toggle ----
+    const loginForm = document.getElementById('loginForm');
+    const registerForm = document.getElementById('registerForm');
+    const toggleLink = document.getElementById('toggleModeLink');
+    let mode = 'login';
+
+    toggleLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      mode = mode === 'login' ? 'register' : 'login';
+      loginForm.style.display = mode === 'login' ? 'block' : 'none';
+      registerForm.style.display = mode === 'register' ? 'block' : 'none';
+      toggleLink.textContent = mode === 'login' ? 'New here? Register for a PIN' : '← Back to PIN login';
+      message.textContent = '';
+      document.getElementById('regMessage').textContent = '';
+    });
+
+    registerForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('regName').value.trim();
+      const role = document.getElementById('regRole').value.trim();
+      const regMsg = document.getElementById('regMessage');
+      const regBtn = document.getElementById('registerBtn');
+
+      if (!name) {
+        regMsg.style.color = '#dc2626';
+        regMsg.textContent = 'Please enter your full name.';
+        return;
+      }
+
+      regBtn.disabled = true;
+      regBtn.textContent = 'Submitting...';
+
+      try {
+        const { error } = await sb.rpc('register_student', { p_name: name, p_studio_role: role });
+        if (error) throw new Error(error.message);
+
+        regMsg.style.color = '#16a34a';
+        regMsg.textContent = 'Request sent! Your teacher will approve you and share your PIN shortly.';
+        document.getElementById('regName').value = '';
+        document.getElementById('regRole').value = '';
+      } catch (err) {
+        regMsg.style.color = '#dc2626';
+        regMsg.textContent = 'Something went wrong. Please try again.';
+        console.error(err);
+      } finally {
+        regBtn.disabled = false;
+        regBtn.textContent = 'Request Access';
+      }
     });
   </script>
 </body>
