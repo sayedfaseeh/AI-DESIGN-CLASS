@@ -91,6 +91,77 @@
     .file-chosen { font-size: 0.8rem; color: var(--blue); margin-top: 0.4rem; word-break: break-all; }
     #submitMsg { font-size: 0.85rem; margin-top: 0.5rem; }
     .empty { color: var(--gray); font-size: 0.9rem; text-align: center; padding: 2rem 0; }
+    .hidden { display: none !important; }
+
+    /* Timer banner */
+    .timer-banner {
+      background: linear-gradient(135deg, #B74094, #8f3175); color: white;
+      border-radius: 12px; padding: 0.75rem 1.25rem; margin-bottom: 1rem;
+      display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+    }
+    .timer-banner strong { font-size: 1.4rem; font-variant-numeric: tabular-nums; }
+    .timer-banner.urgent { background: linear-gradient(135deg, #dc2626, #991b1b); }
+
+    /* Badges */
+    .badge-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 0.6rem; }
+    .badge-item {
+      background: white; border-radius: 12px; padding: 0.75rem 0.4rem; text-align: center;
+      box-shadow: 0 1px 3px rgb(0 0 0 / 0.06); border: 1.5px solid var(--gray-light);
+    }
+    .badge-item.locked { opacity: 0.4; filter: grayscale(1); }
+    .badge-item .icon { font-size: 1.6rem; line-height: 1; }
+    .badge-item .name { font-size: 0.68rem; font-weight: 600; margin-top: 4px; color: var(--charcoal, #424143); }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 0.4rem; margin-top: 1.5rem; flex-wrap: wrap; }
+    .tab {
+      background: white; border: 1.5px solid var(--gray-light); color: var(--gray);
+      border-radius: 100px; padding: 6px 16px; font-size: 0.85rem; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+    }
+    .tab.active { background: var(--blue); color: white; border-color: var(--blue); }
+
+    /* Gallery */
+    .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.75rem; }
+    .gallery-card {
+      background: white; border-radius: 12px; overflow: hidden;
+      box-shadow: 0 1px 3px rgb(0 0 0 / 0.06);
+    }
+    .gallery-card img { width: 100%; height: 120px; object-fit: cover; display: block; }
+    .gallery-card .meta { padding: 0.5rem 0.6rem; }
+    .gallery-card .who { font-size: 0.8rem; font-weight: 600; }
+    .gallery-card .what { font-size: 0.7rem; color: var(--gray); }
+    .gallery-card .pdf-tile {
+      height: 120px; display: flex; align-items: center; justify-content: center;
+      background: var(--blue-light); font-size: 1.8rem; text-decoration: none;
+    }
+
+    /* Prompt library */
+    .prompt-search {
+      width: 100%; border: 1.5px solid var(--gray-light); border-radius: 8px;
+      padding: 10px 12px; font-size: 0.9rem; margin-bottom: 0.75rem; font-family: inherit;
+    }
+    .prompt-card {
+      background: white; border-radius: 12px; padding: 1rem; margin-bottom: 0.6rem;
+      box-shadow: 0 1px 3px rgb(0 0 0 / 0.06);
+    }
+    .prompt-card .top { display: flex; justify-content: space-between; gap: 0.5rem; align-items: baseline; flex-wrap: wrap; }
+    .prompt-card h4 { margin: 0; font-size: 0.95rem; }
+    .prompt-card .tool-tag {
+      font-size: 0.68rem; font-weight: 600; color: var(--blue);
+      background: var(--blue-light); padding: 2px 8px; border-radius: 100px;
+    }
+    .prompt-card pre {
+      background: #f8fafc; border: 1px solid var(--gray-light); border-radius: 8px;
+      padding: 0.7rem; font-size: 0.8rem; white-space: pre-wrap; word-break: break-word;
+      margin: 0.5rem 0 0.4rem; font-family: ui-monospace, monospace;
+    }
+    .prompt-card .notes { font-size: 0.78rem; color: var(--gray); font-style: italic; }
+    .copy-btn {
+      background: var(--gray-light); border: none; border-radius: 6px; padding: 5px 12px;
+      font-size: 0.75rem; font-weight: 600; cursor: pointer; font-family: inherit; margin-top: 0.4rem;
+    }
+    .copy-btn.copied { background: #dcfce7; color: #16a34a; }
   </style>
 </head>
 <body>
@@ -100,6 +171,11 @@
   </header>
 
   <main>
+    <div id="timerBanner" class="timer-banner hidden">
+      <span id="timerLabel"></span>
+      <strong id="timerCountdown">--:--</strong>
+    </div>
+
     <div class="profile-card">
       <div class="avatar" id="avatarInitial">?</div>
       <div class="profile-info">
@@ -112,10 +188,32 @@
     </div>
 
     <section>
+      <h3>Your Badges</h3>
+      <div class="badge-grid" id="badgeGrid"><p class="empty">Loading badges…</p></div>
+    </section>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="quests">Quests</button>
+      <button class="tab" data-tab="gallery">Class Gallery</button>
+      <button class="tab" data-tab="prompts">Prompt Library</button>
+    </div>
+
+    <section id="tab-quests">
       <h3>Active Quests</h3>
       <div class="quest-grid" id="questGrid">
         <p class="empty">Loading quests…</p>
       </div>
+    </section>
+
+    <section id="tab-gallery" class="hidden">
+      <h3>Class Gallery — Approved Work</h3>
+      <div class="gallery-grid" id="galleryGrid"><p class="empty">Loading gallery…</p></div>
+    </section>
+
+    <section id="tab-prompts" class="hidden">
+      <h3>Prompt Library</h3>
+      <input type="text" id="promptSearch" class="prompt-search" placeholder="Search prompts by title, tool or category…">
+      <div class="prompt-list" id="promptList"><p class="empty">Loading prompts…</p></div>
     </section>
 
     <div class="submit-panel hidden" id="submitPanel">
@@ -330,12 +428,147 @@
       loadQuestsAndSubmissions();
     });
 
+    // ---------- Tabs ----------
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        ['quests', 'gallery', 'prompts'].forEach(name => {
+          document.getElementById('tab-' + name).classList.toggle('hidden', name !== tab.dataset.tab);
+        });
+        if (tab.dataset.tab === 'gallery') loadGallery();
+        if (tab.dataset.tab === 'prompts') loadPrompts();
+      });
+    });
+
+    // ---------- Badges ----------
+    async function loadBadges() {
+      const [{ data: allBadges }, { data: mine }] = await Promise.all([
+        sb.from('badges').select('*').order('sort_order'),
+        sb.from('student_badges').select('badge_id').eq('student_id', session.student_id),
+      ]);
+
+      const grid = document.getElementById('badgeGrid');
+      if (!allBadges || allBadges.length === 0) { grid.innerHTML = '<p class="empty">No badges configured.</p>'; return; }
+
+      const earned = new Set((mine || []).map(b => b.badge_id));
+      grid.innerHTML = allBadges.map(b => `
+        <div class="badge-item ${earned.has(b.badge_id) ? '' : 'locked'}" title="${b.description || ''}">
+          <div class="icon">${b.icon}</div>
+          <div class="name">${b.title}</div>
+        </div>
+      `).join('');
+    }
+
+    // ---------- Class gallery ----------
+    async function loadGallery() {
+      const { data: subs } = await sb
+        .from('submissions')
+        .select('*, students(name), quests(title)')
+        .eq('status', 'Approved')
+        .not('file_path', 'is', null)
+        .order('submission_id', { ascending: false })
+        .limit(30);
+
+      const grid = document.getElementById('galleryGrid');
+      if (!subs || subs.length === 0) {
+        grid.innerHTML = '<p class="empty">No approved work with files yet — be the first!</p>';
+        return;
+      }
+
+      grid.innerHTML = subs.map(s => {
+        const url = `${SUPABASE_URL}/storage/v1/object/public/submissions/${s.file_path}`;
+        const visual = s.file_type === 'image'
+          ? `<a href="${url}" target="_blank"><img src="${url}" alt="Approved work"></a>`
+          : `<a href="${url}" target="_blank" class="pdf-tile">📄</a>`;
+        return `
+          <div class="gallery-card">
+            ${visual}
+            <div class="meta">
+              <div class="who">${s.students?.name || 'Student'}</div>
+              <div class="what">${s.quests?.title || s.quest_id}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ---------- Prompt library ----------
+    let __allPrompts = [];
+    async function loadPrompts() {
+      if (__allPrompts.length === 0) {
+        const { data } = await sb.from('prompts').select('*').order('sort_order');
+        __allPrompts = data || [];
+      }
+      renderPrompts();
+    }
+
+    function renderPrompts() {
+      const q = (document.getElementById('promptSearch').value || '').toLowerCase().trim();
+      const list = q
+        ? __allPrompts.filter(p =>
+            (p.title || '').toLowerCase().includes(q) ||
+            (p.category || '').toLowerCase().includes(q) ||
+            (p.tool || '').toLowerCase().includes(q) ||
+            (p.prompt_text || '').toLowerCase().includes(q))
+        : __allPrompts;
+
+      const el = document.getElementById('promptList');
+      if (list.length === 0) { el.innerHTML = '<p class="empty">No prompts match your search.</p>'; return; }
+
+      el.innerHTML = list.map(p => `
+        <div class="prompt-card">
+          <div class="top">
+            <h4>${p.title}</h4>
+            <span class="tool-tag">${p.tool || p.category}</span>
+          </div>
+          <pre id="prompt-${p.prompt_id}">${p.prompt_text.replace(/</g, '&lt;')}</pre>
+          ${p.notes ? `<div class="notes">${p.notes}</div>` : ''}
+          <button class="copy-btn" data-copy="${p.prompt_id}">Copy prompt</button>
+        </div>
+      `).join('');
+
+      el.querySelectorAll('button[data-copy]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const text = document.getElementById('prompt-' + btn.dataset.copy).textContent;
+          try { await navigator.clipboard.writeText(text); } catch (e) { /* clipboard blocked */ }
+          btn.textContent = 'Copied!';
+          btn.classList.add('copied');
+          setTimeout(() => { btn.textContent = 'Copy prompt'; btn.classList.remove('copied'); }, 1500);
+        });
+      });
+    }
+
+    document.getElementById('promptSearch').addEventListener('input', renderPrompts);
+
+    // ---------- Timer ----------
+    let __timerEnds = null;
+    async function syncTimer() {
+      const { data } = await sb.rpc('get_timer');
+      const row = data && data[0];
+      __timerEnds = row && row.ends_at ? new Date(row.ends_at) : null;
+      document.getElementById('timerLabel').textContent = row ? (row.label || 'Time remaining') : '';
+    }
+
+    function tickTimer() {
+      const banner = document.getElementById('timerBanner');
+      if (!__timerEnds) { banner.classList.add('hidden'); return; }
+      const secs = Math.floor((__timerEnds - new Date()) / 1000);
+      if (secs <= 0) { banner.classList.add('hidden'); return; }
+      banner.classList.remove('hidden');
+      banner.classList.toggle('urgent', secs <= 60);
+      const m = String(Math.floor(secs / 60)).padStart(2, '0');
+      const s = String(secs % 60).padStart(2, '0');
+      document.getElementById('timerCountdown').textContent = `${m}:${s}`;
+    }
+
     async function refreshAll() {
-      await Promise.all([loadProfile(), loadQuestsAndSubmissions()]);
+      await Promise.all([loadProfile(), loadQuestsAndSubmissions(), loadBadges(), syncTimer()]);
     }
 
     refreshAll();
     setInterval(refreshAll, 15000); // keep XP/quest status fresh during class
+    setInterval(tickTimer, 1000);
   </script>
 </body>
 </html>

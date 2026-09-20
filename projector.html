@@ -79,6 +79,17 @@
     .qr-box canvas { border-radius: 12px; border: 1px solid var(--gray-light); padding: 10px; }
     .qr-box p { margin-top: 0.75rem; color: var(--gray); font-size: 0.9rem; }
     .empty { color: var(--gray); text-align: center; padding: 1rem 0; font-size: 0.9rem; }
+    .timer-banner {
+      max-width: 1200px; margin: 0 auto 1.5rem; background: linear-gradient(135deg, #B74094, #8f3175);
+      color: white; border-radius: 16px; padding: 1rem 1.75rem;
+      display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+      box-shadow: 0 20px 40px -20px rgb(183 64 148 / 0.35);
+    }
+    .timer-banner span { font-size: 1.1rem; font-weight: 600; }
+    .timer-banner strong { font-size: 2.2rem; font-variant-numeric: tabular-nums; }
+    .timer-banner.urgent { background: linear-gradient(135deg, #dc2626, #991b1b); }
+    .hidden { display: none !important; }
+
     @media (max-width: 860px) {
       body { padding: 1.25rem; }
       .layout { grid-template-columns: 1fr; }
@@ -91,6 +102,11 @@
     <div class="badge">AI FOR DESIGN PROFESSIONALS</div>
     <h1>Live Leaderboard</h1>
     <p>Cindrebay School of Design · AI Campus</p>
+  </div>
+
+  <div id="timerBanner" class="timer-banner hidden">
+    <span id="timerLabel"></span>
+    <strong id="timerCountdown">--:--</strong>
   </div>
 
   <div class="layout">
@@ -232,12 +248,33 @@
       `).join('');
     }
 
+    let __timerEnds = null;
+    async function syncTimer() {
+      const { data } = await sb.rpc('get_timer');
+      const row = data && data[0];
+      __timerEnds = row && row.ends_at ? new Date(row.ends_at) : null;
+      document.getElementById('timerLabel').textContent = row ? (row.label || 'Time remaining') : '';
+    }
+
+    function tickTimer() {
+      const banner = document.getElementById('timerBanner');
+      if (!__timerEnds) { banner.classList.add('hidden'); return; }
+      const secs = Math.floor((__timerEnds - new Date()) / 1000);
+      if (secs <= 0) { banner.classList.add('hidden'); return; }
+      banner.classList.remove('hidden');
+      banner.classList.toggle('urgent', secs <= 60);
+      const m = String(Math.floor(secs / 60)).padStart(2, '0');
+      const s = String(secs % 60).padStart(2, '0');
+      document.getElementById('timerCountdown').textContent = `${m}:${s}`;
+    }
+
     async function refreshAll() {
-      await Promise.all([loadLeaderboard(), loadRecentFeed()]);
+      await Promise.all([loadLeaderboard(), loadRecentFeed(), syncTimer()]);
     }
 
     refreshAll();
     setInterval(refreshAll, 6000);
+    setInterval(tickTimer, 1000);
   </script>
 </body>
 </html>

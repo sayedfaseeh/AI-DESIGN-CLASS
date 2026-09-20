@@ -100,6 +100,12 @@
       outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(29,78,216,0.12);
     }
     .add-student-form button { align-self: flex-end; height: 38px; }
+
+    .timer-controls { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+    .timer-controls input {
+      border: 1px solid var(--gray-light); border-radius: 6px; padding: 8px; font-size: 0.9rem; flex: 1; min-width: 140px;
+    }
+    .bulk-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
   </style>
 </head>
 <body>
@@ -146,8 +152,24 @@
       </section>
 
       <section>
+        <h2>Live Timer</h2>
+        <div class="timer-controls">
+          <input type="text" id="timerLabelInput" placeholder="e.g. Q1.3 NIGHT_AND_DAY">
+          <input type="number" id="timerMinutesInput" placeholder="Minutes" min="1" style="max-width:100px;">
+          <button class="btn btn-primary" id="startTimerBtn">Start</button>
+          <button class="btn btn-red" id="stopTimerBtn">Stop</button>
+        </div>
+        <div id="timerStatus" style="margin-top:0.5rem; font-size:0.85rem; color:var(--gray);"></div>
+      </section>
+
+      <section>
         <h2>Quest Control</h2>
-        <div class="card-list" id="questList"><p class="empty">Loading…</p></div>
+        <div class="bulk-actions">
+          <button class="btn btn-primary" id="activateDay1Btn">Activate all Day 1 (Q1.x)</button>
+          <button class="btn btn-primary" id="activateDay2Btn">Activate all Day 2 (Q2.x)</button>
+          <button class="btn btn-ghost" id="deactivateAllBtn">Deactivate all</button>
+        </div>
+        <div class="card-list" id="questList" style="margin-top:0.75rem;"><p class="empty">Loading…</p></div>
       </section>
 
       <section>
@@ -157,7 +179,10 @@
 
       <section>
         <h2>Students &amp; Quick XP</h2>
-        <input type="text" id="studentSearch" placeholder="Search by name, role, or PIN…" style="width:100%; border:1px solid var(--gray-light); border-radius:8px; padding:10px 12px; font-size:0.9rem; margin-bottom:0.75rem; box-sizing:border-box;">
+        <div style="display:flex; gap:0.5rem; margin-bottom:0.75rem; flex-wrap:wrap;">
+          <input type="text" id="studentSearch" placeholder="Search by name, role, or PIN…" style="flex:1; min-width:200px; border:1px solid var(--gray-light); border-radius:8px; padding:10px 12px; font-size:0.9rem; box-sizing:border-box;">
+          <button class="btn btn-ghost" id="exportCsvBtn">Export CSV</button>
+        </div>
         <div class="card-list" id="studentList"><p class="empty">Loading…</p></div>
       </section>
     </main>
@@ -488,6 +513,64 @@
       document.getElementById('newPin').value = '';
       loadStudents();
     });
+
+    // ---------- Live Timer ----------
+    async function refreshTimerStatus() {
+      const { data } = await sb.rpc('get_timer');
+      const row = data && data[0];
+      const status = document.getElementById('timerStatus');
+      if (!row || !row.ends_at) { status.textContent = 'No timer running.'; return; }
+      const ends = new Date(row.ends_at);
+      const secsLeft = Math.floor((ends - new Date()) / 1000);
+      if (secsLeft <= 0) { status.textContent = 'Timer finished.'; return; }
+      const m = Math.floor(secsLeft / 60), s = secsLeft % 60;
+      status.textContent = `"${row.label}" — ${m}:${String(s).padStart(2, '0')} remaining`;
+    }
+
+    document.getElementById('startTimerBtn').addEventListener('click', async () => {
+      const label = document.getElementById('timerLabelInput').value.trim() || 'Time remaining';
+      const minutes = parseInt(document.getElementById('timerMinutesInput').value);
+      if (!minutes || minutes <= 0) { alert('Enter a number of minutes.'); return; }
+      await sb.rpc('set_timer', { p_teacher_key: teacherKey, p_minutes: minutes, p_label: label });
+      refreshTimerStatus();
+    });
+
+    document.getElementById('stopTimerBtn').addEventListener('click', async () => {
+      await sb.rpc('set_timer', { p_teacher_key: teacherKey, p_minutes: 0, p_label: '' });
+      refreshTimerStatus();
+    });
+
+    // ---------- Bulk quest activation ----------
+    async function bulkSetQuests(prefix, status) {
+      const { data: quests } = await sb.from('quests').select('quest_id');
+      const ids = (quests || []).map(q => q.quest_id).filter(id => prefix ? id.startsWith(prefix) : true);
+      if (ids.length === 0) return;
+      await sb.rpc('set_quests_status_bulk', { p_teacher_key: teacherKey, p_quest_ids: ids, p_status: status });
+      loadQuests();
+    }
+
+    document.getElementById('activateDay1Btn').addEventListener('click', () => bulkSetQuests('Q1', 'Active'));
+    document.getElementById('activateDay2Btn').addEventListener('click', () => bulkSetQuests('Q2', 'Active'));
+    document.getElementById('deactivateAllBtn').addEventListener('click', () => bulkSetQuests('', 'Inactive'));
+
+    // ---------- CSV export ----------
+    document.getElementById('exportCsvBtn').addEventListener('click', () => {
+      const rows = [['Name', 'Studio Role', 'PIN', 'Tier', 'Total XP', 'Active']];
+      __allStudents.forEach(s => {
+        rows.push([s.name, s.studio_role || '', s.pin_code || '', s.tier_level, s.total_xp, s.is_active ? 'Yes' : 'No']);
+      });
+      const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `cindrebay-ai-campus-students-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    setInterval(refreshTimerStatus, 3000);
+    refreshTimerStatus();
 
     boot();
   </script>
