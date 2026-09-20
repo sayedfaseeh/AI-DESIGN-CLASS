@@ -15,6 +15,7 @@
       --gold: #ca8a04; --amber-bg: #fffbeb; --green: #16a34a;
     }
     * { box-sizing: border-box; }
+    html, body { overflow-x: hidden; width: 100%; }
     body {
       font-family: 'Inter', sans-serif; margin: 0;
       background: linear-gradient(160deg, #fbeef7 0%, #f3e4ee 100%);
@@ -32,16 +33,17 @@
 
     .layout {
       display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
-      gap: 2rem; align-items: start; max-width: 1200px; margin: 0 auto;
+      gap: 2rem; align-items: start; max-width: 1200px; margin: 0 auto; width: 100%;
     }
 
     .panel {
       background: white; border-radius: 16px; padding: 1.75rem;
       box-shadow: 0 20px 40px -20px rgb(183 64 148 / 0.2);
+      min-width: 0; max-width: 100%; overflow: hidden;
     }
     .panel h2 { font-size: 1.1rem; margin: 0 0 1.25rem; color: var(--charcoal); font-weight: 700; }
 
-    .podium-row { display: flex; align-items: flex-end; gap: 1rem; margin-bottom: 1.5rem; justify-content: center; }
+    .podium-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1rem; margin-bottom: 1.5rem; justify-content: center; }
     .podium-item { text-align: center; }
     .podium-avatar {
       width: 56px; height: 56px; border-radius: 50%; margin: 0 auto 6px;
