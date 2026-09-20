@@ -30,7 +30,10 @@
     .title-bar h1 { font-size: 1.75rem; font-weight: 800; margin: 0; color: var(--charcoal); }
     .title-bar p { color: var(--gray); margin: 4px 0 0; font-size: 1rem; }
 
-    .layout { display: grid; grid-template-columns: 1.4fr 1fr; gap: 2rem; align-items: start; max-width: 1200px; margin: 0 auto; }
+    .layout {
+      display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+      gap: 2rem; align-items: start; max-width: 1200px; margin: 0 auto;
+    }
 
     .panel {
       background: white; border-radius: 16px; padding: 1.75rem;
@@ -52,7 +55,7 @@
     .podium-xp { color: var(--gray); font-size: 0.8rem; }
     .medal { font-size: 1.4rem; }
 
-    table { width: 100%; border-collapse: collapse; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     th { text-align: left; color: var(--gray); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; padding: 6px 8px; }
     td { padding: 10px 8px; font-size: 0.95rem; border-top: 1px solid var(--gray-light); color: var(--charcoal); }
     .rank-cell { font-weight: 700; width: 40px; color: var(--pink); }
@@ -74,6 +77,10 @@
     .qr-box canvas { border-radius: 12px; border: 1px solid var(--gray-light); padding: 10px; }
     .qr-box p { margin-top: 0.75rem; color: var(--gray); font-size: 0.9rem; }
     .empty { color: var(--gray); text-align: center; padding: 1rem 0; font-size: 0.9rem; }
+    @media (max-width: 860px) {
+      body { padding: 1.25rem; }
+      .layout { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
