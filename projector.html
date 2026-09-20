@@ -149,7 +149,7 @@
 
     async function loadLeaderboard() {
       const { data: students } = await sb
-        .from('students')
+        .from('students_directory')
         .select('*')
         .order('total_xp', { ascending: false })
         .limit(15);

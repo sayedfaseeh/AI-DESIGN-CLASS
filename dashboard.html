@@ -251,7 +251,7 @@
 
     async function loadProfile() {
       const { data, error } = await sb
-        .from('students')
+        .from('students_directory')
         .select('*')
         .eq('student_id', session.student_id)
         .single();
@@ -273,7 +273,7 @@
 
       // Compute leaderboard rank among active, approved students
       const { data: allStudents } = await sb
-        .from('students')
+        .from('students_directory')
         .select('student_id, total_xp')
         .order('total_xp', { ascending: false });
 
