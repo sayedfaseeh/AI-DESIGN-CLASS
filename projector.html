@@ -7,63 +7,81 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
   <style>
-    :root { --blue: #B74094; --pink: #B74094; --gold: #eab308; --silver: #94a3b8; --bronze: #b45309; }
+    :root {
+      --pink: #B74094; --pink-dark: #8f3175; --pink-light: #fbeef7;
+      --charcoal: #424143; --olive: #A6A970; --gray: #6b7280; --gray-light: #f3f4f6;
+      --gold: #ca8a04; --amber-bg: #fffbeb; --green: #16a34a;
+    }
     * { box-sizing: border-box; }
     body {
       font-family: 'Inter', sans-serif; margin: 0;
-      background: linear-gradient(160deg, #2b1024, #6b1f56);
-      color: white; min-height: 100vh; padding: 2.5rem;
+      background: linear-gradient(160deg, #fbeef7 0%, #f3e4ee 100%);
+      color: var(--charcoal); min-height: 100vh; padding: 2.5rem;
     }
     .title-bar { text-align: center; margin-bottom: 2rem; }
-    .title-bar h1 { font-size: 2rem; font-weight: 800; margin: 0; }
-    .title-bar p { color: #93c5fd; margin: 4px 0 0; font-size: 1rem; }
+    .title-bar img { height: 56px; margin-bottom: 0.75rem; }
+    .badge {
+      display: inline-block; background: var(--pink-light); color: var(--pink);
+      font-size: 0.75rem; font-weight: 600; padding: 4px 10px; border-radius: 100px;
+      letter-spacing: 0.02em; margin-bottom: 0.5rem;
+    }
+    .title-bar h1 { font-size: 1.75rem; font-weight: 800; margin: 0; color: var(--charcoal); }
+    .title-bar p { color: var(--gray); margin: 4px 0 0; font-size: 1rem; }
 
-    .layout { display: grid; grid-template-columns: 1.4fr 1fr; gap: 2rem; align-items: start; }
+    .layout { display: grid; grid-template-columns: 1.4fr 1fr; gap: 2rem; align-items: start; max-width: 1200px; margin: 0 auto; }
 
-    .panel { background: rgba(255,255,255,0.06); border-radius: 20px; padding: 1.75rem; backdrop-filter: blur(6px); }
-    .panel h2 { font-size: 1.15rem; margin: 0 0 1.25rem; color: #dbeafe; }
+    .panel {
+      background: white; border-radius: 16px; padding: 1.75rem;
+      box-shadow: 0 20px 40px -20px rgb(183 64 148 / 0.2);
+    }
+    .panel h2 { font-size: 1.1rem; margin: 0 0 1.25rem; color: var(--charcoal); font-weight: 700; }
 
     .podium-row { display: flex; align-items: flex-end; gap: 1rem; margin-bottom: 1.5rem; justify-content: center; }
     .podium-item { text-align: center; }
     .podium-avatar {
       width: 56px; height: 56px; border-radius: 50%; margin: 0 auto 6px;
       display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.3rem;
+      background: var(--pink-light); color: var(--pink);
     }
-    .p1 .podium-avatar { width: 76px; height: 76px; font-size: 1.7rem; background: var(--gold); color: #1e293b; }
-    .p2 .podium-avatar { background: var(--silver); color: #1e293b; }
-    .p3 .podium-avatar { background: var(--bronze); color: white; }
-    .podium-name { font-weight: 700; font-size: 0.95rem; }
-    .podium-xp { color: #cbd5e1; font-size: 0.8rem; }
+    .p1 .podium-avatar { width: 76px; height: 76px; font-size: 1.7rem; background: var(--gold); color: white; }
+    .p2 .podium-avatar { background: #e5e7eb; color: var(--charcoal); }
+    .p3 .podium-avatar { background: #f3d9c4; color: #92400e; }
+    .podium-name { font-weight: 700; font-size: 0.95rem; color: var(--charcoal); }
+    .podium-xp { color: var(--gray); font-size: 0.8rem; }
     .medal { font-size: 1.4rem; }
 
     table { width: 100%; border-collapse: collapse; }
-    th { text-align: left; color: #93c5fd; font-size: 0.75rem; text-transform: uppercase; padding: 6px 8px; }
-    td { padding: 10px 8px; font-size: 0.95rem; border-top: 1px solid rgba(255,255,255,0.08); }
-    .rank-cell { font-weight: 700; width: 40px; }
-    .tier-tag { font-size: 0.7rem; color: #93c5fd; }
+    th { text-align: left; color: var(--gray); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; padding: 6px 8px; }
+    td { padding: 10px 8px; font-size: 0.95rem; border-top: 1px solid var(--gray-light); color: var(--charcoal); }
+    .rank-cell { font-weight: 700; width: 40px; color: var(--pink); }
+    .tier-tag {
+      font-size: 0.7rem; font-weight: 600; color: var(--gold); background: var(--amber-bg);
+      padding: 2px 9px; border-radius: 100px;
+    }
 
     .feed-item {
       display: flex; justify-content: space-between; gap: 0.5rem;
-      padding: 10px 0; border-top: 1px solid rgba(255,255,255,0.08); font-size: 0.9rem;
+      padding: 10px 0; border-top: 1px solid var(--gray-light); font-size: 0.9rem;
     }
     .feed-item:first-child { border-top: none; }
-    .feed-name { font-weight: 600; }
-    .feed-quest { color: #93c5fd; font-size: 0.8rem; }
-    .feed-xp { color: #4ade80; font-weight: 700; white-space: nowrap; }
+    .feed-name { font-weight: 600; color: var(--charcoal); }
+    .feed-quest { color: var(--gray); font-size: 0.8rem; }
+    .feed-xp { color: var(--green); font-weight: 700; white-space: nowrap; }
 
     .qr-box { text-align: center; margin-top: 1.5rem; }
-    .qr-box canvas { border-radius: 12px; background: white; padding: 10px; }
-    .qr-box p { margin-top: 0.75rem; color: #dbeafe; font-size: 0.9rem; }
-    .empty { color: #93c5fd; text-align: center; padding: 1rem 0; font-size: 0.9rem; }
+    .qr-box canvas { border-radius: 12px; border: 1px solid var(--gray-light); padding: 10px; }
+    .qr-box p { margin-top: 0.75rem; color: var(--gray); font-size: 0.9rem; }
+    .empty { color: var(--gray); text-align: center; padding: 1rem 0; font-size: 0.9rem; }
   </style>
 </head>
 <body>
   <div class="title-bar">
-    <img src="logo.svg" alt="Cindrebay School of Design" style="height:52px; margin-bottom:0.75rem; filter:brightness(0) invert(1);">
-    <h1>🎨 AI for Design Professionals</h1>
-    <p>Live Leaderboard · Cindrebay School of Design</p>
+    <img src="logo.svg" alt="Cindrebay School of Design">
+    <div class="badge">AI FOR DESIGN PROFESSIONALS</div>
+    <h1>Live Leaderboard</h1>
+    <p>Cindrebay School of Design · AI Campus</p>
   </div>
 
   <div class="layout">
@@ -93,8 +111,6 @@
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvaXBqcnJ2b3VjaHh2Y2RycGJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NjUwNTcsImV4cCI6MjEwNTI0MTA1N30.kMnLYLLwnEXdRDEy1uIzYSaA9I_w4SvmrXL83_Fhggw';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // QR code points to wherever this projector page itself is hosted, swapped for the login page.
-    // Wrapped in try/catch so a QR failure never blocks the leaderboard/feed logic below.
     try {
       const loginUrl = window.location.href.replace(/projector\.html.*$/, 'index.html');
       new QRCode(document.getElementById('qrcode'), {
@@ -121,7 +137,7 @@
 
       const top3 = students.slice(0, 3);
       const medals = ['🥇', '🥈', '🥉'];
-      const order = top3.length === 3 ? [1, 0, 2] : top3.map((_, i) => i); // 2nd-1st-3rd visual order
+      const order = top3.length === 3 ? [1, 0, 2] : top3.map((_, i) => i);
       const podiumHtml = order.filter(i => top3[i]).map(i => {
         const s = top3[i];
         const cls = i === 0 ? 'p1' : i === 1 ? 'p2' : 'p3';
@@ -140,7 +156,7 @@
         <tr>
           <td class="rank-cell">${i + 1}</td>
           <td>${s.name}</td>
-          <td class="tier-tag">${s.tier_level}</td>
+          <td><span class="tier-tag">${s.tier_level}</span></td>
           <td style="text-align:right; font-weight:700;">${s.total_xp}</td>
         </tr>
       `).join('');
@@ -171,7 +187,7 @@
       const panel = document.querySelector('.panel');
       if (!panel) return;
       panel.style.transition = 'box-shadow 0.3s ease';
-      panel.style.boxShadow = '0 0 0 3px #4ade80, 0 0 40px rgba(74,222,128,0.6)';
+      panel.style.boxShadow = '0 0 0 3px #4ade80, 0 0 40px rgba(74,222,128,0.4)';
       setTimeout(() => { panel.style.boxShadow = ''; }, 1200);
     }
 
