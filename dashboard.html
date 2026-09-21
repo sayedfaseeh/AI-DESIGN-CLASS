@@ -44,6 +44,10 @@
       display: inline-block; font-size: 0.75rem; font-weight: 600; color: var(--blue);
       background: var(--blue-light); padding: 2px 10px; border-radius: 100px; margin-bottom: 8px; margin-left: 6px;
     }
+    .streak-badge {
+      display: inline-block; font-size: 0.75rem; font-weight: 600; color: #b45309;
+      background: #fffbeb; padding: 2px 10px; border-radius: 100px; margin-bottom: 8px; margin-left: 6px;
+    }
     .xp-row { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--gray); margin-bottom: 4px; }
     .xp-wrap { position: relative; }
     .xp-bar { background: var(--gray-light); border-radius: 100px; height: 10px; overflow: hidden; }
@@ -215,6 +219,7 @@
         <h2 id="studentName">Loading…</h2>
         <span class="tier-badge" id="tierBadge">—</span>
         <span class="rank-badge" id="rankBadge"></span>
+        <span class="streak-badge hidden" id="streakBadge"></span>
         <div class="xp-wrap" id="xpWrap">
           <div class="xp-row"><span id="xpLabel">0 XP</span><span id="nextTierLabel"></span></div>
           <div class="xp-bar" id="xpBar"><div class="xp-fill" id="xpFill" style="width:0%"></div></div>
@@ -290,8 +295,29 @@
       bar.classList.add('pulse');
     }
     let __prevSubStatus = {};
+    let __prevBadgeIds = null;
+
+    let __audioCtx = null;
+    function playDing() {
+      try {
+        if (!__audioCtx) __audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const ctx = __audioCtx;
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = 'sine';
+        o.frequency.setValueAtTime(880, ctx.currentTime);
+        o.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.12);
+        g.gain.setValueAtTime(0.0001, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.5);
+        o.start();
+        o.stop(ctx.currentTime + 0.5);
+      } catch (e) { /* audio not available, fail silently */ }
+    }
 
     function celebrate(message) {
+      playDing();
       const toast = document.createElement('div');
       toast.className = 'celebrate-toast';
       toast.textContent = message;
@@ -348,6 +374,14 @@
         showXpGain(data.total_xp - __prevTotalXp);
       }
       __prevTotalXp = data.total_xp;
+
+      const streakBadge = document.getElementById('streakBadge');
+      if (data.streak_count >= 1) {
+        streakBadge.textContent = `🔥 ${data.streak_count}-day streak`;
+        streakBadge.classList.remove('hidden');
+      } else {
+        streakBadge.classList.add('hidden');
+      }
 
       if (!__firstLoad && __prevTier !== null && data.tier_level !== __prevTier) {
         celebrate(`🎉 Leveled up to ${data.tier_level}!`);
@@ -552,6 +586,17 @@
       if (!allBadges || allBadges.length === 0) { grid.innerHTML = '<p class="empty">No badges configured.</p>'; return; }
 
       const earned = new Set((mine || []).map(b => b.badge_id));
+
+      if (!__firstLoad && __prevBadgeIds !== null) {
+        earned.forEach(badgeId => {
+          if (!__prevBadgeIds.has(badgeId)) {
+            const badge = allBadges.find(b => b.badge_id === badgeId);
+            celebrate(`🏅 New badge: ${badge ? badge.title : badgeId}!`);
+          }
+        });
+      }
+      __prevBadgeIds = earned;
+
       grid.innerHTML = allBadges.map(b => `
         <div class="badge-item ${earned.has(b.badge_id) ? '' : 'locked'}" title="${b.description || ''}">
           <div class="icon">${b.icon}</div>
@@ -562,13 +607,18 @@
 
     // ---------- Class gallery ----------
     async function loadGallery() {
-      const { data: subs } = await sb
-        .from('submissions')
-        .select('*, students(name), quests(title)')
-        .eq('status', 'Approved')
-        .not('file_path', 'is', null)
-        .order('submission_id', { ascending: false })
-        .limit(30);
+      const [{ data: subs }, { data: names }] = await Promise.all([
+        sb.from('submissions')
+          .select('*, quests(title)')
+          .eq('status', 'Approved')
+          .not('file_path', 'is', null)
+          .order('submission_id', { ascending: false })
+          .limit(30),
+        sb.from('students_directory').select('student_id, name'),
+      ]);
+
+      const nameById = {};
+      (names || []).forEach(n => { nameById[n.student_id] = n.name; });
 
       const grid = document.getElementById('galleryGrid');
       if (!subs || subs.length === 0) {
@@ -585,7 +635,7 @@
           <div class="gallery-card">
             ${visual}
             <div class="meta">
-              <div class="who">${s.students?.name || 'Student'}</div>
+              <div class="who">${nameById[s.student_id] || 'Student'}</div>
               <div class="what">${s.quests?.title || s.quest_id}</div>
             </div>
           </div>
