@@ -525,13 +525,18 @@
 
     // ---------- Class gallery ----------
     async function loadGallery() {
-      const { data: subs } = await sb
-        .from('submissions')
-        .select('*, students(name), quests(title)')
-        .eq('status', 'Approved')
-        .not('file_path', 'is', null)
-        .order('submission_id', { ascending: false })
-        .limit(30);
+      const [{ data: subs }, { data: names }] = await Promise.all([
+        sb.from('submissions')
+          .select('*, quests(title)')
+          .eq('status', 'Approved')
+          .not('file_path', 'is', null)
+          .order('submission_id', { ascending: false })
+          .limit(30),
+        sb.from('students_directory').select('student_id, name'),
+      ]);
+
+      const nameById = {};
+      (names || []).forEach(n => { nameById[n.student_id] = n.name; });
 
       const grid = document.getElementById('galleryGrid');
       if (!subs || subs.length === 0) {
@@ -548,7 +553,7 @@
           <div class="gallery-card">
             ${visual}
             <div class="meta">
-              <div class="who">${s.students?.name || 'Student'}</div>
+              <div class="who">${nameById[s.student_id] || 'Student'}</div>
               <div class="what">${s.quests?.title || s.quest_id}</div>
             </div>
           </div>
