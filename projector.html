@@ -88,6 +88,14 @@
     .timer-banner span { font-size: 1.1rem; font-weight: 600; }
     .timer-banner strong { font-size: 2.2rem; font-variant-numeric: tabular-nums; }
     .timer-banner.urgent { background: linear-gradient(135deg, #dc2626, #991b1b); }
+    .rising-star-banner {
+      max-width: 1200px; margin: 0 auto 1.5rem; background: linear-gradient(135deg, #ca8a04, #a16207);
+      color: white; border-radius: 16px; padding: 0.85rem 1.75rem;
+      display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+      box-shadow: 0 20px 40px -20px rgb(202 138 4 / 0.4);
+    }
+    .rising-star-label { font-weight: 800; font-size: 1rem; white-space: nowrap; }
+    #risingStarText { font-size: 1.05rem; font-weight: 600; }
     .hidden { display: none !important; }
 
     @media (max-width: 860px) {
@@ -107,6 +115,11 @@
   <div id="timerBanner" class="timer-banner hidden">
     <span id="timerLabel"></span>
     <strong id="timerCountdown">--:--</strong>
+  </div>
+
+  <div id="risingStarBanner" class="rising-star-banner hidden">
+    <span class="rising-star-label">⭐ Rising Star — last 24h</span>
+    <span id="risingStarText"></span>
   </div>
 
   <div class="layout">
@@ -268,8 +281,41 @@
       document.getElementById('timerCountdown').textContent = `${m}:${s}`;
     }
 
+    async function loadRisingStar() {
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data: subs } = await sb
+        .from('submissions')
+        .select('student_id, xp_awarded')
+        .eq('status', 'Approved')
+        .gte('reviewed_at', since);
+
+      const banner = document.getElementById('risingStarBanner');
+      if (!subs || subs.length === 0) { banner.classList.add('hidden'); return; }
+
+      const totals = {};
+      subs.forEach(s => { totals[s.student_id] = (totals[s.student_id] || 0) + (s.xp_awarded || 0); });
+
+      let winnerId = null, winnerXp = 0;
+      Object.entries(totals).forEach(([id, xp]) => {
+        if (xp > winnerXp) { winnerId = id; winnerXp = xp; }
+      });
+
+      if (!winnerId || winnerXp <= 0) { banner.classList.add('hidden'); return; }
+
+      const { data: winner } = await sb
+        .from('students_directory')
+        .select('name')
+        .eq('student_id', winnerId)
+        .single();
+
+      if (!winner) { banner.classList.add('hidden'); return; }
+
+      document.getElementById('risingStarText').textContent = `${winner.name} — +${winnerXp} XP`;
+      banner.classList.remove('hidden');
+    }
+
     async function refreshAll() {
-      await Promise.all([loadLeaderboard(), loadRecentFeed(), syncTimer()]);
+      await Promise.all([loadLeaderboard(), loadRecentFeed(), loadRisingStar(), syncTimer()]);
     }
 
     refreshAll();
