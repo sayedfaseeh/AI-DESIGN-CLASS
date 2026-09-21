@@ -178,6 +178,11 @@
       </section>
 
       <section>
+        <h2>Reviewed Submissions</h2>
+        <div class="card-list" id="reviewedList"><p class="empty">Loading…</p></div>
+      </section>
+
+      <section>
         <h2>Students &amp; Quick XP</h2>
         <div style="display:flex; gap:0.5rem; margin-bottom:0.75rem; flex-wrap:wrap;">
           <input type="text" id="studentSearch" placeholder="Search by name, role, or PIN…" style="flex:1; min-width:200px; border:1px solid var(--gray-light); border-radius:8px; padding:10px 12px; font-size:0.9rem; box-sizing:border-box;">
@@ -236,7 +241,7 @@
       await fetchAllStudents();
       renderRecentSignups();
       renderStudentList();
-      await Promise.all([loadQuests(), loadPendingSubmissions()]);
+      await Promise.all([loadQuests(), loadPendingSubmissions(), loadReviewedSubmissions()]);
     }
 
     // ---------- Students (fetched once via teacher-gated RPC, rendered into two panels) ----------
@@ -371,6 +376,31 @@
           refreshAll();
         });
       });
+    }
+
+    // ---------- Reviewed submissions (read-only history) ----------
+    async function loadReviewedSubmissions() {
+      const { data: subs, error } = await sb.rpc('admin_list_reviewed_submissions', { p_teacher_key: teacherKey });
+      if (error) console.error(error);
+
+      const list = document.getElementById('reviewedList');
+      if (!subs || subs.length === 0) { list.innerHTML = '<p class="empty">No submissions reviewed yet.</p>'; return; }
+
+      list.innerHTML = subs.map(s => {
+        const when = s.reviewed_at ? new Date(s.reviewed_at).toLocaleString() : '';
+        const isApproved = s.status === 'Approved';
+        return `
+        <div class="row-card">
+          <div class="row-main">
+            <div class="row-title">${s.student_name || 'Unknown'} — ${s.quest_title || s.quest_id}</div>
+            ${s.image_or_link ? `<div class="row-sub link-preview">${s.image_or_link.slice(0, 80)}</div>` : ''}
+            ${s.feedback_note ? `<div class="row-sub">Feedback: ${s.feedback_note}</div>` : ''}
+            <div class="row-sub">${when}</div>
+          </div>
+          <span class="tag ${isApproved ? 'approved' : 'iteration'}">${isApproved ? `Approved · +${s.xp_awarded} XP` : 'Needs Iteration'}</span>
+        </div>
+      `;
+      }).join('');
     }
 
     // ---------- Students + quick XP + management ----------
