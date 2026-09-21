@@ -149,6 +149,15 @@
           <button class="btn btn-primary" id="addStudentBtn">Add</button>
         </div>
         <div id="addStudentMsg" style="margin-top:0.5rem; font-size:0.85rem;"></div>
+
+        <div style="margin-top:1.25rem;">
+          <label for="bulkImportInput" style="display:block; font-size:0.75rem; font-weight:600; color:var(--gray); text-transform:uppercase; letter-spacing:0.03em; margin-bottom:6px;">
+            Bulk import (one per line: <code>Full Name, Studio Role</code>)
+          </label>
+          <textarea id="bulkImportInput" rows="4" placeholder="Rila Nafeesa, Interior Designer&#10;Sayed Faseeh, AI Designer" style="width:100%; box-sizing:border-box; border:1px solid var(--gray-light); border-radius:8px; padding:10px 12px; font-size:0.9rem; font-family:inherit; resize:vertical;"></textarea>
+          <button class="btn btn-primary" id="bulkImportBtn" style="margin-top:0.5rem;">Import students</button>
+          <div id="bulkImportMsg" style="margin-top:0.5rem; font-size:0.85rem;"></div>
+        </div>
       </section>
 
       <section>
@@ -545,6 +554,52 @@
       document.getElementById('newName').value = '';
       document.getElementById('newRole').value = '';
       document.getElementById('newPin').value = '';
+      refreshStudents();
+    });
+
+    // ---------- Bulk import ----------
+    document.getElementById('bulkImportBtn').addEventListener('click', async () => {
+      const raw = document.getElementById('bulkImportInput').value;
+      const msg = document.getElementById('bulkImportMsg');
+      const btn = document.getElementById('bulkImportBtn');
+
+      const rows = raw.split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0)
+        .map(line => {
+          const [name, ...rest] = line.split(',');
+          return { name: (name || '').trim(), studio_role: rest.join(',').trim() };
+        })
+        .filter(row => row.name.length > 0);
+
+      if (rows.length === 0) {
+        msg.style.color = '#dc2626';
+        msg.textContent = 'Paste at least one line as "Full Name, Studio Role".';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Importing...';
+
+      const { data, error } = await sb.rpc('bulk_create_students', {
+        p_teacher_key: teacherKey,
+        p_students: rows,
+      });
+
+      btn.disabled = false;
+      btn.textContent = 'Import students';
+
+      if (error) {
+        msg.style.color = '#dc2626';
+        msg.textContent = 'Import failed. Please check the format and try again.';
+        console.error(error);
+        return;
+      }
+
+      msg.style.color = '#16a34a';
+      msg.innerHTML = `Imported ${data.length} student${data.length === 1 ? '' : 's'}:<br>` +
+        data.map(s => `${s.name} — PIN <strong style="font-family:ui-monospace,monospace;">${s.assigned_pin}</strong>`).join('<br>');
+      document.getElementById('bulkImportInput').value = '';
       refreshStudents();
     });
 
