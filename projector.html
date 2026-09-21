@@ -98,6 +98,26 @@
     #risingStarText { font-size: 1.05rem; font-weight: 600; }
     .hidden { display: none !important; }
 
+    #featuredWork { transition: opacity 0.3s ease; }
+    #featuredWork.fade { opacity: 0; }
+    .featured-visual {
+      width: 100%; height: 200px; border-radius: 12px; overflow: hidden;
+      background: var(--gray-light); display: flex; align-items: center; justify-content: center;
+    }
+    .featured-visual img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .featured-visual .file-tile {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      font-size: 2.2rem; color: var(--pink); text-decoration: none; text-align: center;
+    }
+    .featured-visual .file-tile span { font-size: 0.85rem; font-weight: 600; }
+    .featured-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 0.85rem; gap: 0.5rem; }
+    .featured-who { font-weight: 700; color: var(--charcoal); font-size: 1rem; }
+    .featured-quest { color: var(--gray); font-size: 0.82rem; }
+    .featured-xp { color: var(--green); font-weight: 700; white-space: nowrap; }
+    .featured-dots { display: flex; gap: 6px; justify-content: center; margin-top: 0.75rem; }
+    .featured-dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--gray-light); }
+    .featured-dots span.active { background: var(--pink); }
+
     @media (max-width: 860px) {
       body { padding: 1.25rem; }
       .layout { grid-template-columns: 1fr; }
@@ -134,6 +154,10 @@
 
     <div>
       <div class="panel">
+        <h2>🖼️ Featured Work</h2>
+        <div id="featuredWork"><p class="empty">Waiting for approved work…</p></div>
+      </div>
+      <div class="panel" style="margin-top: 1.5rem;">
         <h2>✨ Recent Approved Work</h2>
         <div id="recentFeed"><p class="empty">Waiting for submissions…</p></div>
       </div>
@@ -319,13 +343,97 @@
       banner.classList.remove('hidden');
     }
 
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str ?? '';
+      return div.innerHTML;
+    }
+
+    let __featuredWorks = [];
+    let __featuredIndex = 0;
+
+    async function loadFeaturedWork() {
+      const [{ data: subs }, { data: names }] = await Promise.all([
+        sb.from('submissions')
+          .select('*, quests(title)')
+          .eq('status', 'Approved')
+          .order('submission_id', { ascending: false })
+          .limit(10),
+        sb.from('students_directory').select('student_id, name'),
+      ]);
+
+      const nameById = {};
+      (names || []).forEach(n => { nameById[n.student_id] = n.name; });
+
+      __featuredWorks = (subs || [])
+        .filter(s => s.file_path || s.image_or_link)
+        .map(s => ({
+          name: nameById[s.student_id] || 'Student',
+          quest: s.quests?.title || s.quest_id,
+          xp: s.xp_awarded,
+          filePath: s.file_path,
+          fileType: s.file_type,
+          link: s.image_or_link,
+        }));
+
+      if (__featuredIndex >= __featuredWorks.length) __featuredIndex = 0;
+      renderFeaturedWork();
+    }
+
+    function renderFeaturedWork() {
+      const box = document.getElementById('featuredWork');
+      if (__featuredWorks.length === 0) {
+        box.innerHTML = '<p class="empty">Waiting for approved work…</p>';
+        return;
+      }
+
+      const w = __featuredWorks[__featuredIndex];
+      let visual;
+      if (w.filePath) {
+        const url = `${SUPABASE_URL}/storage/v1/object/public/submissions/${w.filePath}`;
+        visual = w.fileType === 'image'
+          ? `<img src="${url}" alt="Approved work">`
+          : `<a href="${url}" target="_blank" class="file-tile">📄<span>View PDF</span></a>`;
+      } else {
+        visual = `<a href="${escapeHtml(w.link)}" target="_blank" class="file-tile">🔗<span>View Submission</span></a>`;
+      }
+
+      const dots = __featuredWorks.length > 1
+        ? `<div class="featured-dots">${__featuredWorks.map((_, i) => `<span class="${i === __featuredIndex ? 'active' : ''}"></span>`).join('')}</div>`
+        : '';
+
+      box.innerHTML = `
+        <div class="featured-visual">${visual}</div>
+        <div class="featured-meta">
+          <div>
+            <div class="featured-who">${escapeHtml(w.name)}</div>
+            <div class="featured-quest">${escapeHtml(w.quest)}</div>
+          </div>
+          <div class="featured-xp">+${w.xp} XP</div>
+        </div>
+        ${dots}
+      `;
+    }
+
+    function rotateFeaturedWork() {
+      if (__featuredWorks.length <= 1) return;
+      const box = document.getElementById('featuredWork');
+      box.classList.add('fade');
+      setTimeout(() => {
+        __featuredIndex = (__featuredIndex + 1) % __featuredWorks.length;
+        renderFeaturedWork();
+        box.classList.remove('fade');
+      }, 300);
+    }
+
     async function refreshAll() {
-      await Promise.all([loadLeaderboard(), loadRecentFeed(), loadRisingStar(), syncTimer()]);
+      await Promise.all([loadLeaderboard(), loadRecentFeed(), loadRisingStar(), loadFeaturedWork(), syncTimer()]);
     }
 
     refreshAll();
     setInterval(refreshAll, 6000);
     setInterval(tickTimer, 1000);
+    setInterval(rotateFeaturedWork, 5000);
   </script>
 </body>
 </html>
