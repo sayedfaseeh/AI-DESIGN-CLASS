@@ -258,6 +258,7 @@
     let __firstLoad = true;
     let __prevTier = null;
     let __prevSubStatus = {};
+    let __prevBadgeIds = null;
 
     function celebrate(message) {
       const toast = document.createElement('div');
@@ -515,6 +516,17 @@
       if (!allBadges || allBadges.length === 0) { grid.innerHTML = '<p class="empty">No badges configured.</p>'; return; }
 
       const earned = new Set((mine || []).map(b => b.badge_id));
+
+      if (!__firstLoad && __prevBadgeIds !== null) {
+        earned.forEach(badgeId => {
+          if (!__prevBadgeIds.has(badgeId)) {
+            const badge = allBadges.find(b => b.badge_id === badgeId);
+            celebrate(`🏅 New badge: ${badge ? badge.title : badgeId}!`);
+          }
+        });
+      }
+      __prevBadgeIds = earned;
+
       grid.innerHTML = allBadges.map(b => `
         <div class="badge-item ${earned.has(b.badge_id) ? '' : 'locked'}" title="${b.description || ''}">
           <div class="icon">${b.icon}</div>
