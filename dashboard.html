@@ -49,8 +49,23 @@
       background: #fffbeb; padding: 2px 10px; border-radius: 100px; margin-bottom: 8px; margin-left: 6px;
     }
     .xp-row { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--gray); margin-bottom: 4px; }
+    .xp-wrap { position: relative; }
     .xp-bar { background: var(--gray-light); border-radius: 100px; height: 10px; overflow: hidden; }
     .xp-fill { background: linear-gradient(90deg, #d874b8, #B74094); height: 100%; transition: width 0.6s ease; border-radius: 100px; }
+    .xp-bar.pulse { animation: xp-bar-pulse 0.9s ease; }
+    @keyframes xp-bar-pulse {
+      0%, 100% { box-shadow: none; }
+      40% { box-shadow: 0 0 0 4px rgba(183, 64, 148, 0.35); }
+    }
+    .xp-float {
+      position: absolute; top: -4px; right: 0; font-weight: 700; font-size: 0.85rem;
+      color: var(--green); pointer-events: none; animation: xp-float-up 1.4s ease-out forwards;
+    }
+    @keyframes xp-float-up {
+      0% { opacity: 0; transform: translateY(0); }
+      15% { opacity: 1; }
+      100% { opacity: 0; transform: translateY(-22px); }
+    }
 
     section { margin-top: 1.5rem; }
     section h3 { font-size: 1rem; font-weight: 700; margin: 0 0 0.75rem; }
@@ -205,8 +220,10 @@
         <span class="tier-badge" id="tierBadge">—</span>
         <span class="rank-badge" id="rankBadge"></span>
         <span class="streak-badge hidden" id="streakBadge"></span>
-        <div class="xp-row"><span id="xpLabel">0 XP</span><span id="nextTierLabel"></span></div>
-        <div class="xp-bar"><div class="xp-fill" id="xpFill" style="width:0%"></div></div>
+        <div class="xp-wrap" id="xpWrap">
+          <div class="xp-row"><span id="xpLabel">0 XP</span><span id="nextTierLabel"></span></div>
+          <div class="xp-bar" id="xpBar"><div class="xp-fill" id="xpFill" style="width:0%"></div></div>
+        </div>
       </div>
     </div>
 
@@ -262,6 +279,21 @@
     let myApprovedQuestIds = new Set();
     let __firstLoad = true;
     let __prevTier = null;
+    let __prevTotalXp = null;
+
+    function showXpGain(amount) {
+      const wrap = document.getElementById('xpWrap');
+      const bar = document.getElementById('xpBar');
+      const label = document.createElement('div');
+      label.className = 'xp-float';
+      label.textContent = `+${amount} XP`;
+      wrap.appendChild(label);
+      setTimeout(() => label.remove(), 1500);
+
+      bar.classList.remove('pulse');
+      void bar.offsetWidth; // restart animation if it's already mid-pulse
+      bar.classList.add('pulse');
+    }
     let __prevSubStatus = {};
     let __prevBadgeIds = null;
 
@@ -337,6 +369,11 @@
       document.getElementById('avatarInitial').textContent = data.name.charAt(0).toUpperCase();
       document.getElementById('tierBadge').textContent = data.tier_level;
       document.getElementById('xpLabel').textContent = `${data.total_xp} XP`;
+
+      if (!__firstLoad && __prevTotalXp !== null && data.total_xp > __prevTotalXp) {
+        showXpGain(data.total_xp - __prevTotalXp);
+      }
+      __prevTotalXp = data.total_xp;
 
       const streakBadge = document.getElementById('streakBadge');
       if (data.streak_count >= 1) {
