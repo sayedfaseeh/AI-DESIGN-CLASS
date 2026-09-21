@@ -197,7 +197,13 @@
           <input type="text" id="studentSearch" placeholder="Search by name, role, or PIN…" style="flex:1; min-width:200px; border:1px solid var(--gray-light); border-radius:8px; padding:10px 12px; font-size:0.9rem; box-sizing:border-box;">
           <button class="btn btn-ghost" id="exportCsvBtn">Export CSV</button>
         </div>
+        <div class="bulk-actions" id="studentFilterChips" style="margin-bottom:0.75rem;">
+          <button class="btn btn-primary" data-filter="all">All</button>
+          <button class="btn btn-ghost" data-filter="active">Active</button>
+          <button class="btn btn-ghost" data-filter="inactive">Inactive</button>
+        </div>
         <div class="card-list" id="studentList"><p class="empty">Loading…</p></div>
+        <div id="studentPagination" style="display:flex; justify-content:center; align-items:center; gap:0.75rem; margin-top:0.75rem;"></div>
       </section>
     </main>
   </div>
@@ -415,22 +421,46 @@
     // ---------- Students + quick XP + management ----------
     let __allStudents = [];
 
+    let __studentFilter = 'all';
+    let __studentPage = 1;
+    const STUDENTS_PER_PAGE = 10;
+
     function renderStudentList() {
       const query = (document.getElementById('studentSearch').value || '').toLowerCase().trim();
-      const filtered = query
+      let filtered = query
         ? __allStudents.filter(s =>
             (s.name || '').toLowerCase().includes(query) ||
             (s.studio_role || '').toLowerCase().includes(query) ||
             (s.pin_code || '').includes(query))
         : __allStudents;
 
+      if (__studentFilter === 'active') filtered = filtered.filter(s => s.is_active);
+      else if (__studentFilter === 'inactive') filtered = filtered.filter(s => !s.is_active);
+
       const list = document.getElementById('studentList');
+      const pagination = document.getElementById('studentPagination');
+
       if (!filtered || filtered.length === 0) {
-        list.innerHTML = `<p class="empty">${query ? 'No students match your search.' : 'No students yet — add one above.'}</p>`;
+        list.innerHTML = `<p class="empty">${query || __studentFilter !== 'all' ? 'No students match.' : 'No students yet — add one above.'}</p>`;
+        pagination.innerHTML = '';
         return;
       }
 
-      list.innerHTML = filtered.map(s => `
+      const totalPages = Math.max(1, Math.ceil(filtered.length / STUDENTS_PER_PAGE));
+      __studentPage = Math.min(__studentPage, totalPages);
+      const pageItems = filtered.slice((__studentPage - 1) * STUDENTS_PER_PAGE, __studentPage * STUDENTS_PER_PAGE);
+
+      pagination.innerHTML = totalPages <= 1 ? '' : `
+        <button class="btn btn-ghost" id="studentPrevPage" ${__studentPage === 1 ? 'disabled' : ''}>← Prev</button>
+        <span style="font-size:0.85rem; color:var(--gray);">Page ${__studentPage} of ${totalPages} (${filtered.length} students)</span>
+        <button class="btn btn-ghost" id="studentNextPage" ${__studentPage === totalPages ? 'disabled' : ''}>Next →</button>
+      `;
+      const prevBtn = document.getElementById('studentPrevPage');
+      const nextBtn = document.getElementById('studentNextPage');
+      if (prevBtn) prevBtn.addEventListener('click', () => { __studentPage--; renderStudentList(); });
+      if (nextBtn) nextBtn.addEventListener('click', () => { __studentPage++; renderStudentList(); });
+
+      list.innerHTML = pageItems.map(s => `
         <div class="row-card" style="${s.is_active ? '' : 'opacity:0.55;'}">
           <div class="row-main">
             <div class="row-title">${s.name} ${s.is_active ? '' : '<span class="tag inactive" style="margin-left:6px;">Deactivated</span>'}</div>
@@ -509,7 +539,22 @@
       });
     }
 
-    document.getElementById('studentSearch').addEventListener('input', renderStudentList);
+    document.getElementById('studentSearch').addEventListener('input', () => {
+      __studentPage = 1;
+      renderStudentList();
+    });
+
+    document.querySelectorAll('#studentFilterChips button[data-filter]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        __studentFilter = btn.dataset.filter;
+        __studentPage = 1;
+        document.querySelectorAll('#studentFilterChips button[data-filter]').forEach(b => {
+          b.classList.toggle('btn-primary', b === btn);
+          b.classList.toggle('btn-ghost', b !== btn);
+        });
+        renderStudentList();
+      });
+    });
 
     // ---------- Add student ----------
     document.getElementById('addStudentBtn').addEventListener('click', async () => {
