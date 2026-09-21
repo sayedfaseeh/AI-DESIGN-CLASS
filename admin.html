@@ -106,6 +106,21 @@
       border: 1px solid var(--gray-light); border-radius: 6px; padding: 8px; font-size: 0.9rem; flex: 1; min-width: 140px;
     }
     .bulk-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+    .analytics-card {
+      background: white; border-radius: 10px; padding: 1.1rem 1.25rem;
+      box-shadow: 0 1px 3px rgb(0 0 0 / 0.05); margin-bottom: 0.75rem;
+    }
+    .analytics-card h4 { margin: 0 0 0.9rem; font-size: 0.9rem; font-weight: 700; color: #374151; }
+    .chart-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.55rem; }
+    .chart-row:last-child { margin-bottom: 0; }
+    .chart-label {
+      flex: 0 0 150px; font-size: 0.8rem; color: #374151; text-align: right;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .chart-track { flex: 1; background: var(--gray-light); border-radius: 100px; height: 16px; overflow: hidden; }
+    .chart-fill { background: var(--blue); height: 100%; border-radius: 100px; transition: width 0.5s ease; }
+    .chart-value { flex: 0 0 32px; font-size: 0.8rem; font-weight: 700; color: #374151; }
   </style>
 </head>
 <body>
@@ -185,6 +200,18 @@
         </div>
         <div class="card-list" id="studentList"><p class="empty">Loading…</p></div>
       </section>
+
+      <section>
+        <h2>Class Analytics</h2>
+        <div class="analytics-card">
+          <h4>Quest Completion (approved submissions)</h4>
+          <div id="questChart"><p class="empty">Loading…</p></div>
+        </div>
+        <div class="analytics-card">
+          <h4>Students by Tier</h4>
+          <div id="tierChart"><p class="empty">Loading…</p></div>
+        </div>
+      </section>
     </main>
   </div>
 
@@ -236,7 +263,40 @@
       await fetchAllStudents();
       renderRecentSignups();
       renderStudentList();
-      await Promise.all([loadQuests(), loadPendingSubmissions()]);
+      await Promise.all([loadQuests(), loadPendingSubmissions(), loadAnalytics()]);
+    }
+
+    // ---------- Class analytics ----------
+    function renderBarChart(container, items, emptyMessage) {
+      if (!items || items.length === 0) {
+        container.innerHTML = `<p class="empty">${emptyMessage}</p>`;
+        return;
+      }
+      const max = Math.max(1, ...items.map(i => i.value));
+      container.innerHTML = items.map(i => `
+        <div class="chart-row">
+          <div class="chart-label" title="${i.label}">${i.label}</div>
+          <div class="chart-track"><div class="chart-fill" style="width:${(i.value / max) * 100}%"></div></div>
+          <div class="chart-value">${i.value}</div>
+        </div>
+      `).join('');
+    }
+
+    async function loadAnalytics() {
+      const { data: questStats, error } = await sb.rpc('admin_quest_completion_stats', { p_teacher_key: teacherKey });
+      if (error) console.error(error);
+      renderBarChart(
+        document.getElementById('questChart'),
+        (questStats || []).map(q => ({ label: q.title || q.quest_id, value: Number(q.approved_count) })),
+        'No quests configured.'
+      );
+
+      const tierCounts = {};
+      __allStudents.forEach(s => { tierCounts[s.tier_level] = (tierCounts[s.tier_level] || 0) + 1; });
+      const tierItems = Object.entries(tierCounts)
+        .map(([label, value]) => ({ label, value }))
+        .sort((a, b) => b.value - a.value);
+      renderBarChart(document.getElementById('tierChart'), tierItems, 'No students yet.');
     }
 
     // ---------- Students (fetched once via teacher-gated RPC, rendered into two panels) ----------
