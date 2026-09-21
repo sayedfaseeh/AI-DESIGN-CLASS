@@ -185,6 +185,15 @@
         </div>
         <div class="card-list" id="studentList"><p class="empty">Loading…</p></div>
       </section>
+
+      <section>
+        <h2>End-of-Course Showcase</h2>
+        <p style="color:var(--gray); font-size:0.85rem; margin:0 0 0.75rem;">
+          Downloads a standalone HTML page of all approved work, to share or archive once the course wraps up.
+        </p>
+        <button class="btn btn-primary" id="downloadShowcaseBtn">Download Showcase Page</button>
+        <div id="showcaseMsg" style="margin-top:0.5rem; font-size:0.85rem;"></div>
+      </section>
     </main>
   </div>
 
@@ -571,6 +580,100 @@
       a.download = `cindrebay-ai-campus-students-${new Date().toISOString().slice(0, 10)}.csv`;
       a.click();
       URL.revokeObjectURL(url);
+    });
+
+    // ---------- End-of-course showcase export ----------
+    function escapeHtml(str) {
+      return String(str || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    document.getElementById('downloadShowcaseBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('downloadShowcaseBtn');
+      const msg = document.getElementById('showcaseMsg');
+      btn.disabled = true;
+      btn.textContent = 'Building...';
+
+      const { data, error } = await sb.rpc('admin_list_reviewed_submissions', { p_teacher_key: teacherKey });
+
+      btn.disabled = false;
+      btn.textContent = 'Download Showcase Page';
+
+      if (error) {
+        msg.style.color = '#dc2626';
+        msg.textContent = 'Could not build the showcase. Please try again.';
+        console.error(error);
+        return;
+      }
+
+      const approved = (data || [])
+        .filter(s => s.status === 'Approved')
+        .sort((a, b) => (a.student_name || '').localeCompare(b.student_name || ''));
+
+      if (approved.length === 0) {
+        msg.style.color = '#dc2626';
+        msg.textContent = 'No approved work to showcase yet.';
+        return;
+      }
+
+      const cards = approved.map(s => {
+        let visual = '';
+        if (s.file_path) {
+          const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/submissions/${s.file_path}`;
+          visual = s.file_type === 'image'
+            ? `<a href="${publicUrl}" target="_blank"><img src="${publicUrl}" alt="Approved work"></a>`
+            : `<a href="${publicUrl}" target="_blank" class="pdf-tile">📄 View PDF</a>`;
+        } else if (s.image_or_link) {
+          visual = `<div class="link-tile">${escapeHtml(s.image_or_link)}</div>`;
+        }
+        return `
+          <div class="card">
+            ${visual}
+            <div class="meta">
+              <div class="who">${escapeHtml(s.student_name || 'Student')}</div>
+              <div class="what">${escapeHtml(s.quest_title || s.quest_id)}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      const page = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Cindrebay AI Campus — Course Showcase</title>
+<style>
+  body { font-family: -apple-system, 'Inter', sans-serif; background: #fbeef7; margin: 0; padding: 2.5rem 1.5rem; color: #424143; }
+  h1 { text-align: center; margin: 0 0 0.5rem; }
+  p.sub { text-align: center; color: #6b7280; margin: 0 0 2rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; max-width: 1100px; margin: 0 auto; }
+  .card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgb(0 0 0 / 0.08); }
+  .card img { width: 100%; height: 160px; object-fit: cover; display: block; }
+  .pdf-tile, .link-tile {
+    height: 160px; display: flex; align-items: center; justify-content: center; text-align: center;
+    background: #fbeef7; color: #B74094; text-decoration: none; padding: 0.75rem; font-size: 0.9rem; word-break: break-word;
+  }
+  .meta { padding: 0.75rem 0.9rem; }
+  .who { font-weight: 700; font-size: 0.95rem; }
+  .what { font-size: 0.8rem; color: #6b7280; margin-top: 2px; }
+</style>
+</head>
+<body>
+  <h1>Cindrebay AI Campus — Course Showcase</h1>
+  <p class="sub">${approved.length} approved submission${approved.length === 1 ? '' : 's'} · generated ${new Date().toLocaleDateString()}</p>
+  <div class="grid">${cards}</div>
+</body>
+</html>`;
+
+      const blob = new Blob([page], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `cindrebay-course-showcase-${new Date().toISOString().slice(0, 10)}.html`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      msg.style.color = '#16a34a';
+      msg.textContent = `Downloaded showcase with ${approved.length} entries.`;
     });
 
     setInterval(refreshTimerStatus, 3000);
