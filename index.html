@@ -51,9 +51,9 @@
     .teacher-link { text-align: center; margin-top: 1.5rem; }
     .teacher-link a { color: var(--gray); font-size: 0.8rem; text-decoration: none; }
     .teacher-link a:hover { color: var(--pink); text-decoration: underline; }
-    #registerForm label { text-align: left; }
-    #registerForm input { text-transform: none; }
-    #regMessage { color: var(--red); font-size: 0.875rem; margin-top: 1rem; text-align: center; min-height: 1.2em; }
+    #registerForm label, #resetForm label { text-align: left; }
+    #registerForm input, #resetForm input { text-transform: none; }
+    #regMessage, #resetMessage { color: var(--red); font-size: 0.875rem; margin-top: 1rem; text-align: center; min-height: 1.2em; }
   </style>
 </head>
 <body>
@@ -73,13 +73,29 @@
       <label for="regName">Full name</label>
       <input type="text" id="regName" style="letter-spacing:normal; font-family:'Inter',sans-serif; font-size:1rem; text-align:left; margin-bottom:0.9rem;" placeholder="e.g. Rila Nafeesa" required>
       <label for="regRole">Studio role</label>
-      <input type="text" id="regRole" style="letter-spacing:normal; font-family:'Inter',sans-serif; font-size:1rem; text-align:left;" placeholder="e.g. Interior Designer">
+      <input type="text" id="regRole" style="letter-spacing:normal; font-family:'Inter',sans-serif; font-size:1rem; text-align:left; margin-bottom:0.9rem;" placeholder="e.g. Interior Designer">
+      <label for="regRecovery">Recovery phrase</label>
+      <input type="text" id="regRecovery" style="letter-spacing:normal; font-family:'Inter',sans-serif; font-size:1rem; text-align:left;" placeholder="e.g. purple elephant — used to reset your PIN later" required>
       <button type="submit" id="registerBtn">Request Access</button>
       <div id="regMessage"></div>
     </form>
 
-    <div class="toggle-link" style="text-align:center; margin-top:1.1rem;">
+    <form id="resetForm" style="display:none;">
+      <label for="resetName">Full name</label>
+      <input type="text" id="resetName" style="letter-spacing:normal; font-family:'Inter',sans-serif; font-size:1rem; text-align:left; margin-bottom:0.9rem;" placeholder="e.g. Rila Nafeesa" required>
+      <label for="resetRecovery">Recovery phrase</label>
+      <input type="text" id="resetRecovery" style="letter-spacing:normal; font-family:'Inter',sans-serif; font-size:1rem; text-align:left;" placeholder="the phrase you set when you registered" required>
+      <button type="submit" id="resetBtn">Reset my PIN</button>
+      <div id="resetMessage"></div>
+    </form>
+
+    <div class="toggle-link" id="loginLinks" style="text-align:center; margin-top:1.1rem;">
       <a href="#" id="toggleModeLink" style="color:var(--pink); font-size:0.85rem; font-weight:600; text-decoration:none;">New here? Register for a PIN</a>
+      <br>
+      <a href="#" id="forgotPinLink" style="color:var(--gray); font-size:0.8rem; text-decoration:none; margin-top:0.5rem; display:inline-block;">Forgot your PIN?</a>
+    </div>
+    <div class="toggle-link" id="backToLoginLink" style="display:none; text-align:center; margin-top:1.1rem;">
+      <a href="#" id="backLink" style="color:var(--pink); font-size:0.85rem; font-weight:600; text-decoration:none;">← Back to PIN login</a>
     </div>
 
     <div class="teacher-link">
@@ -144,26 +160,54 @@
       pinInput.value = pinInput.value.replace(/[^0-9]/g, '');
     });
 
-    // ---- Register toggle ----
+    // ---- Mode switching (login / register / reset) ----
     const loginForm = document.getElementById('loginForm');
     const registerForm = document.getElementById('registerForm');
+    const resetForm = document.getElementById('resetForm');
     const toggleLink = document.getElementById('toggleModeLink');
+    const forgotPinLink = document.getElementById('forgotPinLink');
+    const backLink = document.getElementById('backLink');
+    const loginLinks = document.getElementById('loginLinks');
+    const backToLoginLink = document.getElementById('backToLoginLink');
     let mode = 'login';
+
+    function setMode(next) {
+      mode = next;
+      loginForm.style.display = mode === 'login' ? 'block' : 'none';
+      registerForm.style.display = mode === 'register' ? 'block' : 'none';
+      resetForm.style.display = mode === 'reset' ? 'block' : 'none';
+      loginLinks.style.display = mode === 'login' ? 'block' : 'none';
+      backToLoginLink.style.display = mode === 'login' ? 'none' : 'block';
+      message.textContent = '';
+      document.getElementById('regMessage').textContent = '';
+      document.getElementById('resetMessage').textContent = '';
+    }
 
     toggleLink.addEventListener('click', (e) => {
       e.preventDefault();
-      mode = mode === 'login' ? 'register' : 'login';
-      loginForm.style.display = mode === 'login' ? 'block' : 'none';
-      registerForm.style.display = mode === 'register' ? 'block' : 'none';
-      toggleLink.textContent = mode === 'login' ? 'New here? Register for a PIN' : '← Back to PIN login';
-      message.textContent = '';
-      document.getElementById('regMessage').textContent = '';
+      setMode('register');
     });
+
+    forgotPinLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      setMode('reset');
+    });
+
+    backLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      setMode('login');
+    });
+
+    function goToLoginWithPin(pin) {
+      setMode('login');
+      pinInput.value = pin;
+    }
 
     registerForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const name = document.getElementById('regName').value.trim();
       const role = document.getElementById('regRole').value.trim();
+      const recovery = document.getElementById('regRecovery').value.trim();
       const regMsg = document.getElementById('regMessage');
       const regBtn = document.getElementById('registerBtn');
 
@@ -172,12 +216,17 @@
         regMsg.textContent = 'Please enter your full name.';
         return;
       }
+      if (!recovery) {
+        regMsg.style.color = '#dc2626';
+        regMsg.textContent = 'Please set a recovery phrase — it\'s how you\'ll reset your PIN if you forget it.';
+        return;
+      }
 
       regBtn.disabled = true;
       regBtn.textContent = 'Submitting...';
 
       try {
-        const { data, error } = await sb.rpc('register_student', { p_name: name, p_studio_role: role });
+        const { data, error } = await sb.rpc('register_student', { p_name: name, p_studio_role: role, p_recovery_phrase: recovery });
         if (error) throw new Error(error.message);
 
         const pin = data && data[0] ? data[0].assigned_pin : null;
@@ -188,13 +237,13 @@
           : 'Registered! Ask your teacher for your PIN.';
         document.getElementById('regName').value = '';
         document.getElementById('regRole').value = '';
+        document.getElementById('regRecovery').value = '';
 
         const continueLink = document.getElementById('continueToLoginLink');
         if (continueLink && pin) {
           continueLink.addEventListener('click', (e) => {
             e.preventDefault();
-            toggleLink.click();
-            pinInput.value = pin;
+            goToLoginWithPin(pin);
           });
         }
       } catch (err) {
@@ -204,6 +253,53 @@
       } finally {
         regBtn.disabled = false;
         regBtn.textContent = 'Request Access';
+      }
+    });
+
+    resetForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('resetName').value.trim();
+      const recovery = document.getElementById('resetRecovery').value.trim();
+      const resetMsg = document.getElementById('resetMessage');
+      const resetBtn = document.getElementById('resetBtn');
+
+      if (!name || !recovery) {
+        resetMsg.style.color = '#dc2626';
+        resetMsg.textContent = 'Please enter your name and recovery phrase.';
+        return;
+      }
+
+      resetBtn.disabled = true;
+      resetBtn.textContent = 'Checking...';
+
+      try {
+        const { data, error } = await sb.rpc('reset_my_pin', { p_name: name, p_recovery_phrase: recovery });
+        if (error) throw new Error(error.message);
+
+        const pin = data && data[0] ? data[0].assigned_pin : null;
+        resetMsg.style.color = '#16a34a';
+        resetMsg.innerHTML = pin
+          ? `Your new PIN is <strong style="font-family:'JetBrains Mono',monospace; font-size:1.1em; letter-spacing:0.1em;">${pin}</strong>.<br><a href="#" id="continueToLoginFromResetLink" style="color:var(--pink); font-weight:600;">Continue to login →</a>`
+          : 'Something went wrong. Please try again.';
+        document.getElementById('resetName').value = '';
+        document.getElementById('resetRecovery').value = '';
+
+        const continueLink = document.getElementById('continueToLoginFromResetLink');
+        if (continueLink && pin) {
+          continueLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            goToLoginWithPin(pin);
+          });
+        }
+      } catch (err) {
+        resetMsg.style.color = '#dc2626';
+        resetMsg.textContent = err.message && err.message.includes('Too many')
+          ? err.message
+          : 'Could not verify your details. Ask your teacher for help.';
+        console.error(err);
+      } finally {
+        resetBtn.disabled = false;
+        resetBtn.textContent = 'Reset my PIN';
       }
     });
   </script>
