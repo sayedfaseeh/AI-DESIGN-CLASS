@@ -149,7 +149,7 @@
 
     async function loadLeaderboard() {
       const { data: students } = await sb
-        .from('students')
+        .from('students_directory')
         .select('*')
         .order('total_xp', { ascending: false })
         .limit(15);
@@ -217,12 +217,17 @@
     }
 
     async function loadRecentFeed() {
-      const { data: subs } = await sb
-        .from('submissions')
-        .select('*, students(name), quests(title)')
-        .eq('status', 'Approved')
-        .order('submission_id', { ascending: false })
-        .limit(6);
+      const [{ data: subs }, { data: names }] = await Promise.all([
+        sb.from('submissions')
+          .select('*, quests(title)')
+          .eq('status', 'Approved')
+          .order('submission_id', { ascending: false })
+          .limit(6),
+        sb.from('students_directory').select('student_id, name'),
+      ]);
+
+      const nameById = {};
+      (names || []).forEach(n => { nameById[n.student_id] = n.name; });
 
       const feed = document.getElementById('recentFeed');
       if (!subs || subs.length === 0) {
@@ -240,7 +245,7 @@
       feed.innerHTML = subs.map(s => `
         <div class="feed-item">
           <div>
-            <div class="feed-name">${s.students?.name || 'Student'}</div>
+            <div class="feed-name">${nameById[s.student_id] || 'Student'}</div>
             <div class="feed-quest">${s.quests?.title || s.quest_id}</div>
           </div>
           <div class="feed-xp">+${s.xp_awarded} XP</div>

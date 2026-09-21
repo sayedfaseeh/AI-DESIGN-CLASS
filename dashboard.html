@@ -162,6 +162,24 @@
       font-size: 0.75rem; font-weight: 600; cursor: pointer; font-family: inherit; margin-top: 0.4rem;
     }
     .copy-btn.copied { background: #dcfce7; color: #16a34a; }
+
+    /* Celebration: confetti + toast on approval / level-up */
+    .confetti-piece {
+      position: fixed; top: -12px; width: 9px; height: 9px; z-index: 9999;
+      pointer-events: none; opacity: 0.9;
+      animation-name: confetti-fall; animation-timing-function: ease-in; animation-fill-mode: forwards;
+    }
+    @keyframes confetti-fall {
+      to { transform: translateY(100vh) rotate(600deg); opacity: 0.2; }
+    }
+    .celebrate-toast {
+      position: fixed; top: 16px; left: 50%; transform: translateX(-50%) translateY(-20px);
+      background: linear-gradient(135deg, #B74094, #8f3175); color: white;
+      padding: 0.85rem 1.4rem; border-radius: 100px; font-weight: 700; font-size: 0.95rem;
+      box-shadow: 0 12px 30px -8px rgb(183 64 148 / 0.5); z-index: 10000;
+      opacity: 0; transition: opacity 0.25s ease, transform 0.25s ease; white-space: nowrap;
+    }
+    .celebrate-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   </style>
 </head>
 <body>
@@ -237,6 +255,34 @@
 
     let selectedQuestId = null;
     let myApprovedQuestIds = new Set();
+    let __firstLoad = true;
+    let __prevTier = null;
+    let __prevSubStatus = {};
+
+    function celebrate(message) {
+      const toast = document.createElement('div');
+      toast.className = 'celebrate-toast';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      requestAnimationFrame(() => toast.classList.add('show'));
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+      }, 3200);
+
+      const colors = ['#B74094', '#8f3175', '#A6A970', '#ca8a04', '#16a34a'];
+      for (let i = 0; i < 60; i++) {
+        const piece = document.createElement('div');
+        piece.className = 'confetti-piece';
+        piece.style.left = Math.random() * 100 + 'vw';
+        piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+        piece.style.borderRadius = Math.random() < 0.5 ? '50%' : '2px';
+        piece.style.animationDuration = (2 + Math.random() * 1.3) + 's';
+        piece.style.animationDelay = (Math.random() * 0.3) + 's';
+        document.body.appendChild(piece);
+        setTimeout(() => piece.remove(), 4000);
+      }
+    }
 
     document.getElementById('logoutBtn').addEventListener('click', () => {
       localStorage.removeItem('cindrebay_student');
@@ -251,7 +297,7 @@
 
     async function loadProfile() {
       const { data, error } = await sb
-        .from('students')
+        .from('students_directory')
         .select('*')
         .eq('student_id', session.student_id)
         .single();
@@ -266,6 +312,11 @@
       document.getElementById('tierBadge').textContent = data.tier_level;
       document.getElementById('xpLabel').textContent = `${data.total_xp} XP`;
 
+      if (!__firstLoad && __prevTier !== null && data.tier_level !== __prevTier) {
+        celebrate(`🎉 Leveled up to ${data.tier_level}!`);
+      }
+      __prevTier = data.tier_level;
+
       const next = tierNextThreshold(data.total_xp);
       document.getElementById('nextTierLabel').textContent = next ? `${next} XP to next tier` : 'Max tier reached';
       const pct = next ? Math.min(100, (data.total_xp / next) * 100) : 100;
@@ -273,7 +324,7 @@
 
       // Compute leaderboard rank among active, approved students
       const { data: allStudents } = await sb
-        .from('students')
+        .from('students_directory')
         .select('student_id, total_xp')
         .order('total_xp', { ascending: false });
 
@@ -288,7 +339,7 @@
     async function loadQuestsAndSubmissions() {
       const [{ data: quests, error: qErr }, { data: mySubs, error: sErr }] = await Promise.all([
         sb.from('quests').select('*').eq('status', 'Active').order('quest_id'),
-        sb.from('submissions').select('*').eq('student_id', session.student_id),
+        sb.rpc('get_my_submissions', { p_student_id: session.student_id, p_pin: session.pin }),
       ]);
 
       if (qErr) console.error(qErr);
@@ -304,6 +355,18 @@
       const subsByQuest = {};
       (mySubs || []).forEach(s => { subsByQuest[s.quest_id] = s; });
       myApprovedQuestIds = new Set((mySubs || []).filter(s => s.status === 'Approved').map(s => s.quest_id));
+
+      if (!__firstLoad) {
+        (mySubs || []).forEach(s => {
+          if (s.status === 'Approved' && __prevSubStatus[s.quest_id] !== 'Approved') {
+            const questTitle = (quests.find(q => q.quest_id === s.quest_id) || {}).title || s.quest_id;
+            celebrate(`🎉 ${questTitle} approved! +${s.xp_awarded} XP`);
+          }
+        });
+      }
+      const nextSubStatus = {};
+      (mySubs || []).forEach(s => { nextSubStatus[s.quest_id] = s.status; });
+      __prevSubStatus = nextSubStatus;
 
       grid.innerHTML = quests.map(q => {
         const mySub = subsByQuest[q.quest_id];
@@ -462,13 +525,18 @@
 
     // ---------- Class gallery ----------
     async function loadGallery() {
-      const { data: subs } = await sb
-        .from('submissions')
-        .select('*, students(name), quests(title)')
-        .eq('status', 'Approved')
-        .not('file_path', 'is', null)
-        .order('submission_id', { ascending: false })
-        .limit(30);
+      const [{ data: subs }, { data: names }] = await Promise.all([
+        sb.from('submissions')
+          .select('*, quests(title)')
+          .eq('status', 'Approved')
+          .not('file_path', 'is', null)
+          .order('submission_id', { ascending: false })
+          .limit(30),
+        sb.from('students_directory').select('student_id, name'),
+      ]);
+
+      const nameById = {};
+      (names || []).forEach(n => { nameById[n.student_id] = n.name; });
 
       const grid = document.getElementById('galleryGrid');
       if (!subs || subs.length === 0) {
@@ -485,7 +553,7 @@
           <div class="gallery-card">
             ${visual}
             <div class="meta">
-              <div class="who">${s.students?.name || 'Student'}</div>
+              <div class="who">${nameById[s.student_id] || 'Student'}</div>
               <div class="what">${s.quests?.title || s.quest_id}</div>
             </div>
           </div>
@@ -564,6 +632,7 @@
 
     async function refreshAll() {
       await Promise.all([loadProfile(), loadQuestsAndSubmissions(), loadBadges(), syncTimer()]);
+      __firstLoad = false;
     }
 
     refreshAll();
