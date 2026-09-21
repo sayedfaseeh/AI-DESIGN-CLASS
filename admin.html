@@ -310,11 +310,8 @@
 
     // ---------- Pending submissions ----------
     async function loadPendingSubmissions() {
-      const { data: subs } = await sb
-        .from('submissions')
-        .select('*, students(name), quests(title, points_xp)')
-        .eq('status', 'Pending Review')
-        .order('submission_id', { ascending: false });
+      const { data: subs, error } = await sb.rpc('admin_list_pending_submissions', { p_teacher_key: teacherKey });
+      if (error) console.error(error);
 
       const list = document.getElementById('pendingList');
       if (!subs || subs.length === 0) { list.innerHTML = '<p class="empty">No pending submissions right now.</p>'; return; }
@@ -332,13 +329,13 @@
         return `
         <div class="row-card">
           <div class="row-main">
-            <div class="row-title">${s.students?.name || 'Unknown'} — ${s.quests?.title || s.quest_id}</div>
+            <div class="row-title">${s.student_name || 'Unknown'} — ${s.quest_title || s.quest_id}</div>
             ${s.image_or_link ? `<div class="row-sub link-preview">${s.image_or_link.slice(0, 80)}</div>` : ''}
             ${fileHtml}
           </div>
           <span class="tag pending">Pending</span>
           <div class="row-actions">
-            <input type="number" class="xp-input" value="${s.quests?.points_xp || 0}" id="xp-${s.submission_id}">
+            <input type="number" class="xp-input" value="${s.quest_points_xp || 0}" id="xp-${s.submission_id}">
             <button class="btn btn-green" data-approve="${s.submission_id}">Approve</button>
             <button class="btn btn-red" data-reject="${s.submission_id}">Needs Work</button>
           </div>
