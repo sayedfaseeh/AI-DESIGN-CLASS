@@ -219,6 +219,19 @@
       </section>
 
       <section>
+        <h2>Needs Attention</h2>
+        <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.75rem; font-size:0.85rem; color:var(--gray);">
+          <label for="attentionDays">Active students with no login in</label>
+          <select id="attentionDays" style="border:1px solid var(--gray-light); border-radius:6px; padding:5px 8px; font-size:0.85rem;">
+            <option value="3" selected>3+ days</option>
+            <option value="7">7+ days</option>
+            <option value="14">14+ days</option>
+          </select>
+        </div>
+        <div class="card-list" id="attentionList"><p class="empty">Loading…</p></div>
+      </section>
+
+      <section>
         <h2>Students &amp; Quick XP</h2>
         <div style="display:flex; gap:0.5rem; margin-bottom:0.75rem; flex-wrap:wrap;">
           <input type="text" id="studentSearch" placeholder="Search by name, role, or PIN…" style="flex:1; min-width:200px; border:1px solid var(--gray-light); border-radius:8px; padding:10px 12px; font-size:0.9rem; box-sizing:border-box;">
@@ -310,8 +323,48 @@
       await fetchAllStudents();
       renderRecentSignups();
       renderStudentList();
+      renderNeedsAttention();
       await Promise.all([loadQuests(), loadPendingSubmissions(), loadReviewedSubmissions(), loadAnalytics()]);
     }
+
+    // ---------- Needs attention: active students who have not logged in recently ----------
+    function daysAgo(date) {
+      return Math.floor((Date.now() - date.getTime()) / 86400000);
+    }
+
+    function renderNeedsAttention() {
+      const box = document.getElementById('attentionList');
+      const threshold = parseInt(document.getElementById('attentionDays').value) || 3;
+
+      const rows = __allStudents
+        .filter(s => s.is_active)
+        .map(s => {
+          // Count from the last login, or from when the student was added if they never logged in.
+          const lastLogin = s.last_login_date ? new Date(s.last_login_date + 'T00:00:00') : null;
+          const created = s.created_at ? new Date(s.created_at) : null;
+          const ref = lastLogin && !isNaN(lastLogin) ? lastLogin : created;
+          return { s, days: ref && !isNaN(ref) ? daysAgo(ref) : null, everLoggedIn: !!(lastLogin && !isNaN(lastLogin)) };
+        })
+        .filter(r => r.days !== null && r.days >= threshold)
+        .sort((a, b) => b.days - a.days);
+
+      if (rows.length === 0) {
+        box.innerHTML = `<p class="empty">Everyone active has logged in within the last ${threshold} days. 🎉</p>`;
+        return;
+      }
+
+      box.innerHTML = rows.map(({ s, days, everLoggedIn }) => `
+        <div class="row-card">
+          <div class="row-main">
+            <div class="row-title">${escapeHtml(s.name)}</div>
+            <div class="row-sub">${escapeHtml(s.studio_role || 'No role given')} · ${Number(s.total_xp) || 0} XP · ${everLoggedIn ? `last login ${days} day${days === 1 ? '' : 's'} ago` : `never logged in (added ${days} day${days === 1 ? '' : 's'} ago)`}</div>
+          </div>
+          <span class="tag pending">${everLoggedIn ? 'Inactive' : 'Never logged in'}</span>
+        </div>
+      `).join('');
+    }
+
+    document.getElementById('attentionDays').addEventListener('change', renderNeedsAttention);
 
     // ---------- Class analytics ----------
     function renderBarChart(container, items, emptyMessage) {
@@ -357,6 +410,7 @@
       await fetchAllStudents();
       renderRecentSignups();
       renderStudentList();
+      renderNeedsAttention();
     }
 
     function renderRecentSignups() {

@@ -92,6 +92,28 @@
       border-radius: 8px; padding: 6px 10px; margin-top: 6px; line-height: 1.4;
     }
 
+    /* My Work */
+    .mywork-summary { font-size: 0.85rem; color: var(--gray); margin: -0.25rem 0 0.75rem; }
+    .work-card {
+      background: white; border-radius: 12px; padding: 0.9rem 1rem; margin-bottom: 0.6rem;
+      box-shadow: 0 1px 3px rgb(0 0 0 / 0.06);
+    }
+    .work-card .work-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; }
+    .work-card h4 { margin: 0; font-size: 0.95rem; font-weight: 600; }
+    .work-card .work-text { font-size: 0.8rem; color: var(--gray); margin-top: 6px; word-break: break-word; }
+    .work-card .work-text a { color: var(--blue); }
+    .work-card img.work-thumb { max-width: 140px; max-height: 100px; border-radius: 8px; margin-top: 8px; display: block; border: 1px solid var(--gray-light); }
+
+    /* Locked badge hint + prompt category chips */
+    .badge-item .hint { font-size: 0.6rem; color: var(--gray); margin-top: 3px; line-height: 1.25; }
+    .cat-chips { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+    .cat-chip {
+      background: white; border: 1.5px solid var(--gray-light); color: var(--gray);
+      border-radius: 100px; padding: 4px 12px; font-size: 0.78rem; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+    }
+    .cat-chip.active { background: var(--blue); color: white; border-color: var(--blue); }
+
     .submit-panel {
       background: white; border-radius: 14px; padding: 1.25rem;
       box-shadow: 0 1px 3px rgb(0 0 0 / 0.06); margin-top: 1.5rem;
@@ -238,6 +260,7 @@
 
     <div class="tabs">
       <button class="tab active" data-tab="quests">Quests</button>
+      <button class="tab" data-tab="mywork">My Work</button>
       <button class="tab" data-tab="gallery">Class Gallery</button>
       <button class="tab" data-tab="prompts">Prompt Library</button>
     </div>
@@ -249,6 +272,12 @@
       </div>
     </section>
 
+    <section id="tab-mywork" class="hidden">
+      <h3>My Work</h3>
+      <div class="mywork-summary" id="myWorkSummary"></div>
+      <div id="myWorkList"><p class="empty">Loading your submissions…</p></div>
+    </section>
+
     <section id="tab-gallery" class="hidden">
       <h3>Class Gallery — Approved Work</h3>
       <div class="gallery-grid" id="galleryGrid"><p class="empty">Loading gallery…</p></div>
@@ -257,6 +286,7 @@
     <section id="tab-prompts" class="hidden">
       <h3>Prompt Library</h3>
       <input type="text" id="promptSearch" class="prompt-search" placeholder="Search prompts by title, tool or category…">
+      <div class="cat-chips hidden" id="promptCats"></div>
       <div class="prompt-list" id="promptList"><p class="empty">Loading prompts…</p></div>
     </section>
 
@@ -284,6 +314,30 @@
 
     function storageUrl(path) {
       return `${SUPABASE_URL}/storage/v1/object/public/submissions/${encodeURIComponent(path)}`;
+    }
+
+    // Returns the URL only if it is http(s); blocks javascript:, data:, etc.
+    function safeUrl(str) {
+      try {
+        const u = new URL(String(str ?? '').trim());
+        return u.protocol === 'http:' || u.protocol === 'https:' ? u.href : '';
+      } catch (e) { return ''; }
+    }
+
+    // Quest id -> title for every quest (including inactive ones), fetched once per page load.
+    let __questTitles = null;
+    async function getQuestTitles() {
+      if (__questTitles) return __questTitles;
+      try {
+        const { data, error } = await sb.from('quests').select('quest_id, title');
+        if (error || !data) return {};
+        const map = {};
+        data.forEach(q => { map[q.quest_id] = q.title; });
+        __questTitles = map;
+        return map;
+      } catch (e) {
+        return {}; // never let a title lookup break the page; callers fall back to the quest id
+      }
     }
 
     const session = JSON.parse(localStorage.getItem('cindrebay_student') || 'null');
@@ -588,19 +642,90 @@
       tab.addEventListener('click', () => {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
-        ['quests', 'gallery', 'prompts'].forEach(name => {
+        ['quests', 'mywork', 'gallery', 'prompts'].forEach(name => {
           document.getElementById('tab-' + name).classList.toggle('hidden', name !== tab.dataset.tab);
         });
+        if (tab.dataset.tab === 'mywork') loadMyWork();
         if (tab.dataset.tab === 'gallery') loadGallery();
         if (tab.dataset.tab === 'prompts') loadPrompts();
       });
     });
 
+    // ---------- My Work (the student's own submission history) ----------
+    async function loadMyWork() {
+      const list = document.getElementById('myWorkList');
+      const summary = document.getElementById('myWorkSummary');
+
+      const [{ data: subs, error }, titles] = await Promise.all([
+        sb.rpc('get_my_submissions', { p_student_id: session.student_id, p_pin: session.pin }),
+        getQuestTitles(),
+      ]);
+
+      if (error) {
+        console.error(error);
+        summary.textContent = '';
+        list.innerHTML = '<p class="empty">Could not load your submissions. Please try again.</p>';
+        return;
+      }
+
+      const mine = [...(subs || [])].sort((a, b) => b.submission_id - a.submission_id);
+      if (mine.length === 0) {
+        summary.textContent = '';
+        list.innerHTML = '<p class="empty">You have not submitted anything yet — pick a quest to get started!</p>';
+        return;
+      }
+
+      const approved = mine.filter(s => s.status === 'Approved');
+      const pending = mine.filter(s => s.status === 'Pending Review').length;
+      const xp = approved.reduce((sum, s) => sum + (Number(s.xp_awarded) || 0), 0);
+      summary.textContent = `${approved.length} approved · ${pending} pending · ${xp} XP from quests`;
+
+      list.innerHTML = mine.map(s => {
+        let status;
+        if (s.status === 'Approved') status = `<span class="my-status status-approved">✓ Approved · +${Number(s.xp_awarded) || 0} XP</span>`;
+        else if (s.status === 'Pending Review') status = '<span class="my-status status-pending">⏳ Pending review</span>';
+        else status = '<span class="my-status status-iteration">↻ Needs another try</span>';
+
+        let text = '';
+        if (s.image_or_link) {
+          const link = safeUrl(s.image_or_link);
+          const shown = escapeHtml(s.image_or_link.slice(0, 120));
+          text = link
+            ? `<div class="work-text"><a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${shown}</a></div>`
+            : `<div class="work-text">${shown}</div>`;
+        }
+
+        let file = '';
+        if (s.file_path) {
+          const url = escapeHtml(storageUrl(s.file_path));
+          file = s.file_type === 'image'
+            ? `<a href="${url}" target="_blank" rel="noopener noreferrer"><img class="work-thumb" src="${url}" alt="Your submitted work"></a>`
+            : `<div class="work-text"><a href="${url}" target="_blank" rel="noopener noreferrer">📄 View your PDF</a></div>`;
+        }
+
+        const note = s.feedback_note && s.status !== 'Pending Review'
+          ? `<div class="my-feedback">💬 ${escapeHtml(s.feedback_note)}</div>` : '';
+
+        return `
+          <div class="work-card">
+            <div class="work-top">
+              <h4>${escapeHtml(titles[s.quest_id] || s.quest_id)}</h4>
+              ${status}
+            </div>
+            ${text}
+            ${file}
+            ${note}
+          </div>
+        `;
+      }).join('');
+    }
+
     // ---------- Badges ----------
     async function loadBadges() {
-      const [{ data: allBadges }, { data: mine }] = await Promise.all([
+      const [{ data: allBadges }, { data: mine }, titles] = await Promise.all([
         sb.from('badges').select('*').order('sort_order'),
         sb.from('student_badges').select('badge_id').eq('student_id', session.student_id),
+        getQuestTitles(),
       ]);
 
       const grid = document.getElementById('badgeGrid');
@@ -622,6 +747,7 @@
         <div class="badge-item ${earned.has(b.badge_id) ? '' : 'locked'}" title="${escapeHtml(b.description || '')}">
           <div class="icon">${escapeHtml(b.icon)}</div>
           <div class="name">${escapeHtml(b.title)}</div>
+          ${!earned.has(b.badge_id) && b.unlock_quest_id ? `<div class="hint">🔒 ${escapeHtml(titles[b.unlock_quest_id] || b.unlock_quest_id)}</div>` : ''}
         </div>
       `).join('');
     }
@@ -666,23 +792,43 @@
 
     // ---------- Prompt library ----------
     let __allPrompts = [];
+    let __promptCategory = ''; // '' = all categories
     async function loadPrompts() {
       if (__allPrompts.length === 0) {
         const { data } = await sb.from('prompts').select('*').order('sort_order');
         __allPrompts = data || [];
+        renderPromptCats();
       }
       renderPrompts();
     }
 
+    function renderPromptCats() {
+      const box = document.getElementById('promptCats');
+      const cats = [...new Set(__allPrompts.map(p => p.category).filter(Boolean))].sort();
+      if (cats.length < 2) { box.classList.add('hidden'); return; }
+      box.classList.remove('hidden');
+      box.innerHTML = [['', 'All'], ...cats.map(c => [c, c])].map(([value, label]) =>
+        `<button type="button" class="cat-chip ${value === __promptCategory ? 'active' : ''}" data-cat="${escapeHtml(value)}">${escapeHtml(label)}</button>`
+      ).join('');
+      box.querySelectorAll('.cat-chip').forEach(btn => {
+        btn.addEventListener('click', () => {
+          __promptCategory = btn.dataset.cat;
+          renderPromptCats();
+          renderPrompts();
+        });
+      });
+    }
+
     function renderPrompts() {
       const q = (document.getElementById('promptSearch').value || '').toLowerCase().trim();
+      const pool = __promptCategory ? __allPrompts.filter(p => p.category === __promptCategory) : __allPrompts;
       const list = q
-        ? __allPrompts.filter(p =>
+        ? pool.filter(p =>
             (p.title || '').toLowerCase().includes(q) ||
             (p.category || '').toLowerCase().includes(q) ||
             (p.tool || '').toLowerCase().includes(q) ||
             (p.prompt_text || '').toLowerCase().includes(q))
-        : __allPrompts;
+        : pool;
 
       const el = document.getElementById('promptList');
       if (list.length === 0) { el.innerHTML = '<p class="empty">No prompts match your search.</p>'; return; }
