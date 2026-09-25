@@ -94,6 +94,33 @@
       padding: 0 5px; font-size: 0.72rem; font-family: ui-monospace, monospace; color: #374151;
     }
     .row-card.kb-selected { outline: 2px solid var(--blue); outline-offset: 2px; }
+    .bulk-bar { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+    .bulk-all { font-size: 0.85rem; color: #374151; display: flex; align-items: center; gap: 0.35rem; cursor: pointer; }
+    .bulk-status { font-size: 0.85rem; color: var(--gray); }
+    .sel-check { margin-right: 0.35rem; vertical-align: middle; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(17, 24, 39, 0.6); z-index: 10000;
+      display: flex; align-items: flex-start; justify-content: center; padding: 1.5rem 1rem; overflow-y: auto;
+    }
+    .modal-card {
+      position: relative; background: white; border-radius: 14px; padding: 1.5rem; width: 100%; max-width: 640px;
+      box-shadow: 0 20px 50px -12px rgb(0 0 0 / 0.4);
+    }
+    .modal-close {
+      position: absolute; top: 10px; right: 10px; width: 32px; height: 32px; border-radius: 50%;
+      border: none; background: var(--gray-light); cursor: pointer; font-size: 0.95rem;
+    }
+    .detail-name { margin: 0 0 4px; font-size: 1.15rem; padding-right: 2rem; }
+    .detail-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 0.5rem; margin: 1rem 0; }
+    .detail-stats div { background: #f8fafc; border-radius: 10px; padding: 0.6rem; text-align: center; }
+    .detail-stats strong { display: block; font-size: 1rem; }
+    .detail-stats span { font-size: 0.7rem; color: var(--gray); }
+    .detail-h { margin: 1rem 0 0.5rem; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--gray); }
+    .detail-badge { display: inline-block; background: #fef3c7; color: var(--amber); border-radius: 100px; padding: 3px 10px; font-size: 0.75rem; font-weight: 600; margin: 0 0.3rem 0.3rem 0; }
+    .detail-item { border: 1px solid var(--gray-light); border-radius: 10px; padding: 0.7rem 0.9rem; margin-bottom: 0.5rem; }
+    .detail-item-top { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
     .fb-chips { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 6px; }
     .chip {
       border: 1px solid var(--gray-light); background: white; color: #374151; border-radius: 100px;
@@ -216,7 +243,12 @@
 
       <section>
         <h2>Pending Submissions</h2>
-        <p class="kb-hint">Keyboard: <kbd>J</kbd>/<kbd>K</kbd> move · <kbd>A</kbd> approve · <kbd>N</kbd> needs work · <kbd>F</kbd> write feedback · <kbd>Esc</kbd> leave the box</p>
+        <p class="kb-hint">Keyboard: <kbd>J</kbd>/<kbd>K</kbd> move · <kbd>A</kbd> approve · <kbd>N</kbd> needs work · <kbd>X</kbd> tick for bulk · <kbd>F</kbd> write feedback · <kbd>Esc</kbd> leave the box</p>
+        <div class="bulk-bar" id="bulkBar">
+          <label class="bulk-all"><input type="checkbox" id="bulkAll"> Select all</label>
+          <button class="btn btn-green" id="bulkApproveBtn" disabled>Approve selected (0)</button>
+          <span class="bulk-status" id="bulkStatus" role="status"></span>
+        </div>
         <div class="card-list" id="pendingList"><p class="empty">Loading…</p></div>
       </section>
 
@@ -493,9 +525,14 @@
 
       // The queue refreshes every few seconds; don't wipe a note the teacher is in the middle of typing.
       const active = document.activeElement;
-      if (active && list.contains(active) && active.tagName === 'INPUT') return;
+      if (active && list.contains(active) && active.tagName === 'INPUT' && active.type !== 'checkbox') return;
 
-      if (!subs || subs.length === 0) { list.innerHTML = '<p class="empty">No pending submissions right now.</p>'; return; }
+      if (!subs || subs.length === 0) {
+        list.innerHTML = '<p class="empty">No pending submissions right now.</p>';
+        __bulkSel.clear();
+        updateBulkBar();
+        return;
+      }
 
       // Keep any XP / feedback the teacher has already entered across re-renders.
       const kept = {};
@@ -514,7 +551,7 @@
         return `
         <div class="row-card" data-sub="${Number(s.submission_id)}">
           <div class="row-main">
-            <div class="row-title">${escapeHtml(s.student_name || 'Unknown')} — ${escapeHtml(s.quest_title || s.quest_id)}</div>
+            <div class="row-title"><input type="checkbox" class="sel-check" data-sel="${Number(s.submission_id)}" aria-label="Select for bulk approve" ${__bulkSel.has(String(s.submission_id)) ? 'checked' : ''}> ${escapeHtml(s.student_name || 'Unknown')} — ${escapeHtml(s.quest_title || s.quest_id)}</div>
             ${s.image_or_link ? `<div class="row-sub link-preview">${escapeHtml(s.image_or_link.slice(0, 80))}</div>` : ''}
             ${fileHtml}
             <input type="text" class="fb-input" id="fb-${Number(s.submission_id)}" maxlength="300" placeholder="Feedback for the student (optional)">
@@ -537,6 +574,17 @@
         if (el) el.value = value;
       });
       applyKbSelection();
+
+      // Bulk selection: forget submissions that are no longer pending, and wire the checkboxes.
+      const present = new Set(subs.map(s => String(s.submission_id)));
+      [...__bulkSel].forEach(id => { if (!present.has(id)) __bulkSel.delete(id); });
+      list.querySelectorAll('input.sel-check').forEach(box => {
+        box.addEventListener('change', () => {
+          if (box.checked) __bulkSel.add(box.dataset.sel); else __bulkSel.delete(box.dataset.sel);
+          updateBulkBar();
+        });
+      });
+      updateBulkBar();
 
       // Quick-reply chips append their text to the feedback box.
       list.querySelectorAll('button.chip').forEach(chip => {
@@ -579,6 +627,74 @@
       });
     }
 
+    // ---------- Bulk approve ----------
+    // Ticked submissions are approved one after another with exactly what is on their cards
+    // (the XP box and any feedback typed), through the same review_submission call as the Approve button.
+    let __bulkSel = new Set();
+    let __bulkBusy = false;
+
+    function updateBulkBar() {
+      const cards = pendingCards();
+      const n = __bulkSel.size;
+      const btn = document.getElementById('bulkApproveBtn');
+      const all = document.getElementById('bulkAll');
+      btn.textContent = `Approve selected (${n})`;
+      btn.disabled = n === 0 || __bulkBusy;
+      all.disabled = cards.length === 0 || __bulkBusy;
+      all.checked = cards.length > 0 && n === cards.length;
+      all.indeterminate = n > 0 && n < cards.length;
+    }
+
+    document.getElementById('bulkAll').addEventListener('change', (e) => {
+      pendingCards().forEach(c => {
+        if (e.target.checked) __bulkSel.add(c.dataset.sub); else __bulkSel.delete(c.dataset.sub);
+        const box = c.querySelector('input.sel-check');
+        if (box) box.checked = e.target.checked;
+      });
+      updateBulkBar();
+    });
+
+    async function bulkApprove() {
+      if (__bulkBusy) return;
+      // Read XP + notes up front: the list may re-render while the calls are running.
+      const jobs = pendingCards()
+        .filter(c => __bulkSel.has(c.dataset.sub))
+        .map(c => ({
+          id: c.dataset.sub,
+          xp: parseInt(document.getElementById(`xp-${c.dataset.sub}`).value) || 0,
+          note: document.getElementById(`fb-${c.dataset.sub}`).value.trim(),
+        }));
+      if (jobs.length === 0) return;
+      if (!confirm(`Approve ${jobs.length} submission${jobs.length === 1 ? '' : 's'}?\n\nEach one gets the XP shown on its card and any feedback you typed.`)) return;
+
+      __bulkBusy = true;
+      updateBulkBar();
+      const status = document.getElementById('bulkStatus');
+      let done = 0;
+      const failures = [];
+      for (const job of jobs) {
+        status.style.color = '';
+        status.textContent = `Approving ${done + failures.length + 1} of ${jobs.length}…`;
+        const { error } = await sb.rpc('review_submission', {
+          p_teacher_key: teacherKey,
+          p_submission_id: parseInt(job.id),
+          p_status: 'Approved',
+          p_xp_awarded: job.xp,
+          p_feedback_note: job.note || null,
+        });
+        if (error) failures.push(error.message); else { done++; __bulkSel.delete(job.id); }
+      }
+      __bulkBusy = false;
+      status.style.color = failures.length ? '#dc2626' : '#16a34a';
+      status.textContent = failures.length
+        ? `Approved ${done} of ${jobs.length}. ${failures.length} failed: ${failures[0]}`
+        : `Approved ${done} submission${done === 1 ? '' : 's'}.`;
+      await refreshAll();
+      updateBulkBar();
+    }
+
+    document.getElementById('bulkApproveBtn').addEventListener('click', bulkApprove);
+
     // ---------- Keyboard shortcuts for the review queue ----------
     // J/K move the highlight, A approves, N sends back, F jumps to the feedback box. Shortcuts only act on the
     // highlighted card, never fire while typing, and reuse the buttons' own click handlers.
@@ -608,7 +724,8 @@
       if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
       if (document.getElementById('app').style.display !== 'block') return; // not logged in
       const t = e.target;
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) {
+      const typing = t && ((t.tagName === 'INPUT' && t.type !== 'checkbox') || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
+      if (typing) {
         if (e.key === 'Escape') t.blur();
         return;
       }
@@ -616,6 +733,11 @@
       if (key === 'j' || key === 'k') {
         e.preventDefault();
         moveKbSelection(key === 'j' ? 1 : -1);
+      } else if (key === 'x') {
+        const card = pendingCards().find(c => c.dataset.sub === __kbSelectedSub);
+        if (!card) return;
+        e.preventDefault();
+        card.querySelector('input.sel-check').click(); // toggles the bulk tick for the highlighted card
       } else if (key === 'a' || key === 'n' || key === 'f') {
         const cards = pendingCards();
         const i = cards.findIndex(c => c.dataset.sub === __kbSelectedSub);
@@ -705,6 +827,7 @@
           <div class="row-actions">
             <button class="btn btn-ghost" data-quickxp="${Number(s.student_id)}" data-amount="10">+10</button>
             <button class="btn btn-ghost" data-quickxp="${Number(s.student_id)}" data-amount="25">+25</button>
+            <button class="btn btn-ghost" data-detail="${Number(s.student_id)}">Details</button>
             <button class="btn btn-ghost" data-edit="${Number(s.student_id)}">Edit</button>
             <button class="btn ${s.is_active ? 'btn-ghost' : 'btn-green'}" data-toggleactive="${Number(s.student_id)}" data-newactive="${s.is_active ? 'false' : 'true'}">${s.is_active ? 'Deactivate' : 'Reactivate'}</button>
             <button class="btn btn-red" data-delete="${Number(s.student_id)}">Delete</button>
@@ -746,6 +869,10 @@
           if (error) { alert('Could not delete student.'); console.error(error); }
           refreshStudents();
         });
+      });
+
+      list.querySelectorAll('button[data-detail]').forEach(btn => {
+        btn.addEventListener('click', () => openStudentDetail(parseInt(btn.dataset.detail)));
       });
 
       list.querySelectorAll('button[data-edit]').forEach(btn => {
@@ -938,6 +1065,107 @@
       a.click();
       URL.revokeObjectURL(url);
     });
+
+    // ---------- Student detail: profile, badges and full submission timeline ----------
+    // Built from the teacher-gated RPCs the page already uses, so it needs no new database access.
+    let __detailToken = 0;
+
+    function closeStudentDetail() {
+      __detailToken++; // ignore any request still in flight
+      const m = document.getElementById('studentModal');
+      if (m) m.remove();
+    }
+
+    function shortDate(v) {
+      const d = v ? new Date(v) : null;
+      return d && !isNaN(d) ? d.toLocaleDateString() : '—';
+    }
+
+    async function openStudentDetail(id) {
+      const student = __allStudents.find(s => s.student_id === id);
+      if (!student) return;
+      closeStudentDetail();
+      const token = ++__detailToken;
+
+      const modal = document.createElement('div');
+      modal.id = 'studentModal';
+      modal.className = 'modal-backdrop';
+      modal.setAttribute('role', 'dialog');
+      modal.setAttribute('aria-label', 'Student details');
+      modal.innerHTML = '<div class="modal-card"><button type="button" class="modal-close" aria-label="Close">✕</button><div id="studentModalBody"><p class="empty">Loading…</p></div></div>';
+      modal.addEventListener('click', (e) => { if (e.target === modal || e.target.classList.contains('modal-close')) closeStudentDetail(); });
+      document.body.appendChild(modal);
+
+      const [pending, reviewed, allBadges, mine] = await Promise.all([
+        sb.rpc('admin_list_pending_submissions', { p_teacher_key: teacherKey }),
+        sb.rpc('admin_list_reviewed_submissions', { p_teacher_key: teacherKey }),
+        sb.from('badges').select('badge_id, title, icon').order('sort_order'),
+        sb.from('student_badges').select('badge_id').eq('student_id', id),
+      ]);
+      if (token !== __detailToken) return; // closed or replaced while loading
+      const body = document.getElementById('studentModalBody');
+
+      if (pending.error || reviewed.error) {
+        body.innerHTML = '<p class="empty">Could not load this student\'s submissions. Please try again.</p>';
+        return;
+      }
+
+      const subs = [...(pending.data || []), ...(reviewed.data || [])]
+        .filter(s => s.student_id === id)
+        .sort((a, b) => b.submission_id - a.submission_id);
+      const approved = subs.filter(s => s.status === 'Approved');
+      const pendingCount = subs.filter(s => s.status === 'Pending Review').length;
+      const earned = new Set((mine.data || []).map(b => b.badge_id));
+      const badgeHtml = (allBadges.data || []).filter(b => earned.has(b.badge_id))
+        .map(b => `<span class="detail-badge" title="${escapeHtml(b.title)}">${escapeHtml(b.icon)} ${escapeHtml(b.title)}</span>`).join('');
+
+      const timeline = subs.map(s => {
+        const tag = s.status === 'Approved'
+          ? `<span class="tag approved">Approved · +${Number(s.xp_awarded) || 0} XP</span>`
+          : s.status === 'Pending Review' ? '<span class="tag pending">Pending</span>' : '<span class="tag iteration">Needs Iteration</span>';
+        let extra = '';
+        if (s.image_or_link) {
+          const link = /^https?:\/\//i.test(s.image_or_link.trim()) ? s.image_or_link.trim() : '';
+          extra += link
+            ? `<div class="row-sub link-preview"><a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(s.image_or_link.slice(0, 90))}</a></div>`
+            : `<div class="row-sub link-preview">${escapeHtml(s.image_or_link.slice(0, 90))}</div>`;
+        }
+        if (s.file_path) {
+          const url = escapeHtml(storageUrl(s.file_path));
+          extra += s.file_type === 'image'
+            ? `<a href="${url}" target="_blank" rel="noopener noreferrer"><img src="${url}" alt="Submission file" class="submission-thumb"></a>`
+            : `<a href="${url}" target="_blank" rel="noopener noreferrer" class="pdf-link">📄 View PDF</a>`;
+        }
+        if (s.feedback_note) extra += `<div class="row-sub">💬 ${escapeHtml(s.feedback_note)}</div>`;
+        return `
+          <div class="detail-item">
+            <div class="detail-item-top"><strong>${escapeHtml(s.quest_title || s.quest_id)}</strong>${tag}</div>
+            ${s.reviewed_at ? `<div class="row-sub">Reviewed ${escapeHtml(shortDate(s.reviewed_at))}</div>` : ''}
+            ${extra}
+          </div>`;
+      }).join('');
+
+      const note = (reviewed.data || []).length >= 200
+        ? '<p class="row-sub">Older reviews may be missing: the reviewed list shows the latest 200 across the class.</p>' : '';
+
+      body.innerHTML = `
+        <h3 class="detail-name">${escapeHtml(student.name)} ${student.is_active ? '' : '<span class="tag inactive">Deactivated</span>'}</h3>
+        <div class="row-sub">${escapeHtml(student.studio_role || 'No role given')} · ${escapeHtml(student.tier_level)} · ${Number(student.total_xp) || 0} XP · PIN ${escapeHtml(student.pin_code || '—')}</div>
+        <div class="detail-stats">
+          <div><strong>${approved.length}</strong><span>approved</span></div>
+          <div><strong>${pendingCount}</strong><span>pending</span></div>
+          <div><strong>${Number(student.streak_count) || 0}</strong><span>day streak</span></div>
+          <div><strong>${escapeHtml(shortDate(student.last_login_date))}</strong><span>last login</span></div>
+          <div><strong>${escapeHtml(shortDate(student.created_at))}</strong><span>joined</span></div>
+        </div>
+        <h4 class="detail-h">Badges</h4>
+        <div>${badgeHtml || '<span class="row-sub">No badges yet.</span>'}</div>
+        <h4 class="detail-h">Submissions</h4>
+        ${timeline || '<p class="empty">No submissions yet.</p>'}
+        ${note}`;
+    }
+
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeStudentDetail(); });
 
     // ---------- Printable PIN cards (one card per active student) ----------
     document.getElementById('printPinCardsBtn').addEventListener('click', () => {
