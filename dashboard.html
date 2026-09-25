@@ -87,6 +87,10 @@
     .status-pending { color: #b45309; }
     .status-approved { color: var(--green); }
     .status-iteration { color: #dc2626; }
+    .my-feedback {
+      font-size: 0.8rem; color: #374151; background: var(--gray-light);
+      border-radius: 8px; padding: 6px 10px; margin-top: 6px; line-height: 1.4;
+    }
 
     .submit-panel {
       background: white; border-radius: 14px; padding: 1.25rem;
@@ -433,8 +437,12 @@
         return;
       }
 
+      // One card per quest: show the latest attempt, but never let a later attempt hide an approval.
       const subsByQuest = {};
-      (mySubs || []).forEach(s => { subsByQuest[s.quest_id] = s; });
+      [...(mySubs || [])].sort((a, b) => a.submission_id - b.submission_id).forEach(s => {
+        const cur = subsByQuest[s.quest_id];
+        if (!cur || cur.status !== 'Approved') subsByQuest[s.quest_id] = s;
+      });
       myApprovedQuestIds = new Set((mySubs || []).filter(s => s.status === 'Approved').map(s => s.quest_id));
 
       if (!__firstLoad) {
@@ -456,6 +464,9 @@
           if (mySub.status === 'Approved') statusHtml = `<div class="my-status status-approved">✓ Approved · +${Number(mySub.xp_awarded) || 0} XP</div>`;
           else if (mySub.status === 'Pending Review') statusHtml = `<div class="my-status status-pending">⏳ Pending review</div>`;
           else statusHtml = `<div class="my-status status-iteration">↻ Needs another try</div>`;
+          if (mySub.status !== 'Pending Review' && mySub.feedback_note) {
+            statusHtml += `<div class="my-feedback">💬 ${escapeHtml(mySub.feedback_note)}</div>`;
+          }
         }
         return `
           <div class="quest" data-quest-id="${escapeHtml(q.quest_id)}" data-quest-title="${escapeHtml(q.title)}">

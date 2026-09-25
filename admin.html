@@ -83,6 +83,18 @@
     .pdf-link:hover { text-decoration: underline; }
     .empty { color: var(--gray); font-size: 0.9rem; text-align: center; padding: 1.5rem 0; }
 
+    .fb-input {
+      width: 100%; margin-top: 8px; border: 1px solid var(--gray-light); border-radius: 6px;
+      padding: 7px 9px; font-size: 0.85rem; font-family: inherit;
+    }
+    .fb-input:focus { outline: none; border-color: var(--blue); }
+    .fb-chips { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 6px; }
+    .chip {
+      border: 1px solid var(--gray-light); background: white; color: #374151; border-radius: 100px;
+      padding: 3px 10px; font-size: 0.72rem; cursor: pointer; font-family: inherit;
+    }
+    .chip:hover { border-color: var(--blue); color: var(--blue); }
+
     .add-student-form {
       background: white; border-radius: 10px; padding: 1rem; display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-end;
     }
@@ -404,12 +416,28 @@
     }
 
     // ---------- Pending submissions ----------
+    const FEEDBACK_CHIPS = [
+      'Great work!',
+      'Add more detail to your prompt.',
+      'Try a different composition.',
+      'Use the required tool for this quest.',
+    ];
+
     async function loadPendingSubmissions() {
       const { data: subs, error } = await sb.rpc('admin_list_pending_submissions', { p_teacher_key: teacherKey });
       if (error) console.error(error);
 
       const list = document.getElementById('pendingList');
+
+      // The queue refreshes every few seconds; don't wipe a note the teacher is in the middle of typing.
+      const active = document.activeElement;
+      if (active && list.contains(active) && active.tagName === 'INPUT') return;
+
       if (!subs || subs.length === 0) { list.innerHTML = '<p class="empty">No pending submissions right now.</p>'; return; }
+
+      // Keep any XP / feedback the teacher has already entered across re-renders.
+      const kept = {};
+      list.querySelectorAll('input[id^="xp-"], input[id^="fb-"]').forEach(i => { kept[i.id] = i.value; });
 
       list.innerHTML = subs.map(s => {
         let fileHtml = '';
@@ -427,6 +455,10 @@
             <div class="row-title">${escapeHtml(s.student_name || 'Unknown')} — ${escapeHtml(s.quest_title || s.quest_id)}</div>
             ${s.image_or_link ? `<div class="row-sub link-preview">${escapeHtml(s.image_or_link.slice(0, 80))}</div>` : ''}
             ${fileHtml}
+            <input type="text" class="fb-input" id="fb-${Number(s.submission_id)}" maxlength="300" placeholder="Feedback for the student (optional)">
+            <div class="fb-chips">
+              ${FEEDBACK_CHIPS.map(t => `<button type="button" class="chip" data-fb-for="${Number(s.submission_id)}" data-text="${escapeHtml(t)}">${escapeHtml(t)}</button>`).join('')}
+            </div>
           </div>
           <span class="tag pending">Pending</span>
           <div class="row-actions">
@@ -438,33 +470,49 @@
       `;
       }).join('');
 
+      Object.entries(kept).forEach(([id, value]) => {
+        const el = document.getElementById(id);
+        if (el) el.value = value;
+      });
+
+      // Quick-reply chips append their text to the feedback box.
+      list.querySelectorAll('button.chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          const input = document.getElementById(`fb-${chip.dataset.fbFor}`);
+          if (!input) return;
+          const next = input.value.trim() ? `${input.value.trim()} ${chip.dataset.text}` : chip.dataset.text;
+          input.value = next.slice(0, 300);
+        });
+      });
+
+      async function submitReview(btn, status, xp) {
+        const id = btn.dataset.approve || btn.dataset.reject;
+        const note = document.getElementById(`fb-${id}`).value.trim();
+        btn.disabled = true;
+        const { error } = await sb.rpc('review_submission', {
+          p_teacher_key: teacherKey,
+          p_submission_id: parseInt(id),
+          p_status: status,
+          p_xp_awarded: xp,
+          p_feedback_note: note || null,
+        });
+        if (error) {
+          btn.disabled = false;
+          alert('Could not save the review: ' + error.message);
+          return;
+        }
+        refreshAll();
+      }
+
       list.querySelectorAll('button[data-approve]').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const id = btn.dataset.approve;
-          const xp = parseInt(document.getElementById(`xp-${id}`).value) || 0;
-          btn.disabled = true;
-          await sb.rpc('review_submission', {
-            p_teacher_key: teacherKey,
-            p_submission_id: parseInt(id),
-            p_status: 'Approved',
-            p_xp_awarded: xp,
-          });
-          refreshAll();
+        btn.addEventListener('click', () => {
+          const xp = parseInt(document.getElementById(`xp-${btn.dataset.approve}`).value) || 0;
+          submitReview(btn, 'Approved', xp);
         });
       });
 
       list.querySelectorAll('button[data-reject]').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const id = btn.dataset.reject;
-          btn.disabled = true;
-          await sb.rpc('review_submission', {
-            p_teacher_key: teacherKey,
-            p_submission_id: parseInt(id),
-            p_status: 'Needs Iteration',
-            p_xp_awarded: 0,
-          });
-          refreshAll();
-        });
+        btn.addEventListener('click', () => submitReview(btn, 'Needs Iteration', 0));
       });
     }
 
