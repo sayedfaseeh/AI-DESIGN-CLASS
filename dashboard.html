@@ -94,6 +94,11 @@
 
     /* My Work */
     .mywork-summary { font-size: 0.85rem; color: var(--gray); margin: -0.25rem 0 0.75rem; }
+    .portfolio-btn {
+      background: var(--blue); color: white; border: none; border-radius: 8px; padding: 8px 14px;
+      font-size: 0.85rem; font-weight: 600; cursor: pointer; font-family: inherit; margin-bottom: 0.9rem;
+    }
+    .portfolio-btn:disabled { background: var(--gray); opacity: 0.5; cursor: not-allowed; }
     .work-card {
       background: white; border-radius: 12px; padding: 0.9rem 1rem; margin-bottom: 0.6rem;
       box-shadow: 0 1px 3px rgb(0 0 0 / 0.06);
@@ -293,6 +298,7 @@
     <section id="tab-mywork" class="hidden">
       <h3>My Work</h3>
       <div class="mywork-summary" id="myWorkSummary"></div>
+      <button type="button" class="portfolio-btn" id="portfolioBtn" disabled>⬇ Download my portfolio</button>
       <div id="myWorkList"><p class="empty">Loading your submissions…</p></div>
     </section>
 
@@ -676,6 +682,80 @@
       });
     });
 
+    // ---------- Portfolio: the student's approved work as a standalone page they can keep or print ----------
+    let __portfolio = { approved: [], titles: {} };
+
+    document.getElementById('portfolioBtn').addEventListener('click', () => {
+      const { approved, titles } = __portfolio;
+      if (!approved.length) return;
+
+      const name = (session && session.name) || document.getElementById('studentName').textContent || 'Student';
+      const tier = document.getElementById('tierBadge').textContent;
+      const xp = approved.reduce((sum, s) => sum + (Number(s.xp_awarded) || 0), 0);
+
+      const cards = [...approved].sort((a, b) => a.submission_id - b.submission_id).map(s => {
+        let visual = '';
+        if (s.file_path) {
+          const url = escapeHtml(storageUrl(s.file_path));
+          visual = s.file_type === 'image'
+            ? `<a href="${url}" target="_blank" rel="noopener noreferrer"><img src="${url}" alt="Approved work"></a>`
+            : `<a href="${url}" target="_blank" rel="noopener noreferrer" class="tile">📄 View PDF</a>`;
+        } else if (s.image_or_link) {
+          const link = safeUrl(s.image_or_link);
+          visual = link
+            ? `<a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer" class="tile">🔗 ${escapeHtml(s.image_or_link.slice(0, 80))}</a>`
+            : `<div class="tile">${escapeHtml(s.image_or_link.slice(0, 140))}</div>`;
+        }
+        const when = s.reviewed_at && !isNaN(new Date(s.reviewed_at)) ? new Date(s.reviewed_at).toLocaleDateString() : '';
+        return `
+          <div class="card">
+            ${visual}
+            <div class="meta">
+              <div class="what">${escapeHtml(titles[s.quest_id] || s.quest_id)}</div>
+              <div class="sub">+${Number(s.xp_awarded) || 0} XP${when ? ' · ' + escapeHtml(when) : ''}</div>
+              ${s.feedback_note ? `<div class="note">“${escapeHtml(s.feedback_note)}”</div>` : ''}
+            </div>
+          </div>`;
+      }).join('');
+
+      const page = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${escapeHtml(name)} — Cindrebay AI Campus Portfolio</title>
+<style>
+  body { font-family: -apple-system, 'Inter', sans-serif; background: #fbeef7; margin: 0; padding: 2rem 1.25rem; color: #424143; }
+  h1 { text-align: center; margin: 0 0 0.25rem; }
+  p.sub { text-align: center; color: #6b7280; margin: 0 0 2rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 1rem; max-width: 1000px; margin: 0 auto; }
+  .card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgb(0 0 0 / 0.08); break-inside: avoid; }
+  .card img { width: 100%; height: 170px; object-fit: cover; display: block; }
+  .tile { height: 170px; display: flex; align-items: center; justify-content: center; text-align: center; background: #fbeef7; color: #B74094; text-decoration: none; padding: 0.75rem; font-size: 0.9rem; word-break: break-word; box-sizing: border-box; }
+  .meta { padding: 0.75rem 0.9rem; }
+  .what { font-weight: 700; font-size: 0.95rem; }
+  .sub { font-size: 0.8rem; color: #6b7280; margin-top: 2px; }
+  .note { font-size: 0.8rem; color: #374151; margin-top: 6px; font-style: italic; }
+  @media print { body { background: white; } }
+</style>
+</head>
+<body>
+  <h1>${escapeHtml(name)}</h1>
+  <p class="sub">Cindrebay AI Campus · ${escapeHtml(tier)} · ${approved.length} approved piece${approved.length === 1 ? '' : 's'} · ${xp} XP from quests · saved ${new Date().toLocaleDateString()}</p>
+  <div class="grid">${cards}</div>
+</body>
+</html>`;
+
+      const url = URL.createObjectURL(new Blob([page], { type: 'text/html' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `my-cindrebay-portfolio-${new Date().toISOString().slice(0, 10)}.html`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    });
+
     // ---------- My Work (the student's own submission history) ----------
     async function loadMyWork() {
       const list = document.getElementById('myWorkList');
@@ -685,6 +765,10 @@
         sb.rpc('get_my_submissions', { p_student_id: session.student_id, p_pin: session.pin }),
         getQuestTitles(),
       ]);
+
+      const portfolioBtn = document.getElementById('portfolioBtn');
+      __portfolio = { approved: [], titles: {} };
+      portfolioBtn.disabled = true;
 
       if (error) {
         console.error(error);
@@ -701,6 +785,8 @@
       }
 
       const approved = mine.filter(s => s.status === 'Approved');
+      __portfolio = { approved, titles };
+      portfolioBtn.disabled = approved.length === 0;
       const pending = mine.filter(s => s.status === 'Pending Review').length;
       const xp = approved.reduce((sum, s) => sum + (Number(s.xp_awarded) || 0), 0);
       summary.textContent = `${approved.length} approved · ${pending} pending · ${xp} XP from quests`;
