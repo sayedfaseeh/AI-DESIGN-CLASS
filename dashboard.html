@@ -144,6 +144,12 @@
     .hidden { display: none !important; }
 
     /* Timer banner */
+    .announce {
+      background: #fffbeb; border: 1.5px solid #fcd34d; color: #78350f; border-radius: 12px;
+      padding: 0.7rem 0.9rem; margin-bottom: 1rem; display: flex; align-items: flex-start; gap: 0.6rem; font-size: 0.9rem; line-height: 1.4;
+    }
+    .announce-text { flex: 1; word-break: break-word; }
+    .announce-close { background: transparent; border: none; color: #92400e; cursor: pointer; font-size: 0.95rem; padding: 0 2px; }
     .timer-banner {
       background: linear-gradient(135deg, #B74094, #8f3175); color: white;
       border-radius: 12px; padding: 0.75rem 1.25rem; margin-bottom: 1rem;
@@ -257,6 +263,12 @@
   </header>
 
   <main>
+    <div id="announceBanner" class="announce hidden" role="status">
+      <span aria-hidden="true">📢</span>
+      <span id="announceText" class="announce-text"></span>
+      <button type="button" id="announceClose" class="announce-close" aria-label="Dismiss announcement">✕</button>
+    </div>
+
     <div id="timerBanner" class="timer-banner hidden">
       <span id="timerLabel"></span>
       <strong id="timerCountdown">--:--</strong>
@@ -1089,8 +1101,38 @@
       document.getElementById('timerCountdown').textContent = `${m}:${s}`;
     }
 
+    // ---------- Teacher announcement ----------
+    // A student can dismiss it; it comes back when the teacher changes the text. Storage is guarded.
+    const ANNOUNCE_KEY = 'cindrebay_announce_dismissed_' + (session ? session.student_id : 'anon');
+    let __announceMessage = '';
+
+    function announceDismissed() {
+      try { return localStorage.getItem(ANNOUNCE_KEY) === __announceMessage; } catch (e) { return false; }
+    }
+
+    function renderAnnouncement() {
+      const banner = document.getElementById('announceBanner');
+      if (!__announceMessage || announceDismissed()) { banner.classList.add('hidden'); return; }
+      document.getElementById('announceText').textContent = __announceMessage;
+      banner.classList.remove('hidden');
+    }
+
+    async function syncAnnouncement() {
+      try {
+        const { data, error } = await sb.rpc('get_announcement');
+        if (error) return; // keep whatever is showing
+        __announceMessage = data && data[0] && data[0].message ? String(data[0].message) : '';
+        renderAnnouncement();
+      } catch (e) { /* announcements are optional: never let them break the dashboard */ }
+    }
+
+    document.getElementById('announceClose').addEventListener('click', () => {
+      try { localStorage.setItem(ANNOUNCE_KEY, __announceMessage); } catch (e) { /* storage unavailable */ }
+      renderAnnouncement();
+    });
+
     async function refreshAll() {
-      await Promise.all([loadProfile(), loadQuestsAndSubmissions(), loadBadges(), syncTimer()]);
+      await Promise.all([loadProfile(), loadQuestsAndSubmissions(), loadBadges(), syncTimer(), syncAnnouncement()]);
       __firstLoad = false;
     }
 

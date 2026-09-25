@@ -79,6 +79,12 @@
     .qr-box canvas { border-radius: 12px; border: 1px solid var(--gray-light); padding: 10px; }
     .qr-box p { margin-top: 0.75rem; color: var(--gray); font-size: 0.9rem; }
     .empty { color: var(--gray); text-align: center; padding: 1rem 0; font-size: 0.9rem; }
+    .announce-banner {
+      max-width: 1200px; margin: 0 auto 1.5rem; background: #fffbeb; border: 2px solid #fcd34d; color: #78350f;
+      border-radius: 16px; padding: 0.9rem 1.75rem; display: flex; align-items: center; gap: 0.9rem;
+      font-size: 1.4rem; font-weight: 600; line-height: 1.35;
+    }
+    .announce-banner #announceText { flex: 1; word-break: break-word; }
     .timer-banner {
       max-width: 1200px; margin: 0 auto 1.5rem; background: linear-gradient(135deg, #B74094, #8f3175);
       color: white; border-radius: 16px; padding: 1rem 1.75rem;
@@ -130,6 +136,11 @@
     <div class="badge">AI FOR DESIGN PROFESSIONALS</div>
     <h1>Live Leaderboard</h1>
     <p>Cindrebay School of Design · AI Campus</p>
+  </div>
+
+  <div id="announceBanner" class="announce-banner hidden" role="status">
+    <span aria-hidden="true">📢</span>
+    <span id="announceText"></span>
   </div>
 
   <div id="timerBanner" class="timer-banner hidden">
@@ -440,8 +451,19 @@
       }, 300);
     }
 
+    async function syncAnnouncement() {
+      try {
+        const { data, error } = await sb.rpc('get_announcement');
+        if (error) return; // keep whatever is showing
+        const message = data && data[0] && data[0].message ? String(data[0].message) : '';
+        const banner = document.getElementById('announceBanner');
+        document.getElementById('announceText').textContent = message;
+        banner.classList.toggle('hidden', !message);
+      } catch (e) { /* optional: never break the projector */ }
+    }
+
     async function refreshAll() {
-      await Promise.all([loadLeaderboard(), loadRecentFeed(), loadRisingStar(), loadFeaturedWork(), syncTimer()]);
+      await Promise.all([loadLeaderboard(), loadRecentFeed(), loadRisingStar(), loadFeaturedWork(), syncTimer(), syncAnnouncement()]);
     }
 
     refreshAll();

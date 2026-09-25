@@ -94,6 +94,17 @@
       padding: 0 5px; font-size: 0.72rem; font-family: ui-monospace, monospace; color: #374151;
     }
     .row-card.kb-selected { outline: 2px solid var(--blue); outline-offset: 2px; }
+    .manage-input {
+      width: 100%; border: 1px solid var(--gray-light); border-radius: 8px; padding: 9px 11px; font-size: 0.9rem;
+      font-family: inherit; box-sizing: border-box; background: white;
+    }
+    .manage-input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(183, 64, 148, 0.12); }
+    .manage-input[readonly] { background: var(--gray-light); color: var(--gray); }
+    .manage-form { background: white; border-radius: 10px; padding: 0.8rem 1rem; margin-top: 0.75rem; box-shadow: 0 1px 3px rgb(0 0 0 / 0.05); }
+    .manage-form > summary { cursor: pointer; font-weight: 600; font-size: 0.9rem; color: #374151; }
+    .manage-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0.6rem; margin-top: 0.75rem; }
+    .manage-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 0.72rem; font-weight: 600; color: var(--gray); text-transform: uppercase; letter-spacing: 0.03em; }
+    .hidden { display: none !important; }
     .bulk-bar { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
     .bulk-all { font-size: 0.85rem; color: #374151; display: flex; align-items: center; gap: 0.35rem; cursor: pointer; }
     .bulk-status { font-size: 0.85rem; color: var(--gray); }
@@ -232,13 +243,60 @@
       </section>
 
       <section>
+        <h2>Class Announcement</h2>
+        <p class="kb-hint" style="margin-top:0;">Shown at the top of every student's dashboard. Students can dismiss it; changing the text shows it to them again.</p>
+        <textarea id="announceInput" class="manage-input" rows="2" maxlength="300" placeholder="e.g. Tomorrow: bring your laptops and headphones!"></textarea>
+        <div class="bulk-actions" style="margin-top:0.5rem; align-items:center;">
+          <button class="btn btn-primary" id="announcePublishBtn">Publish</button>
+          <button class="btn btn-ghost" id="announceClearBtn">Clear</button>
+          <span id="announceStatus" class="bulk-status" role="status"></span>
+        </div>
+      </section>
+
+      <section>
         <h2>Quest Control</h2>
         <div class="bulk-actions">
           <button class="btn btn-primary" id="activateDay1Btn">Activate all Day 1 (Q1.x)</button>
           <button class="btn btn-primary" id="activateDay2Btn">Activate all Day 2 (Q2.x)</button>
           <button class="btn btn-ghost" id="deactivateAllBtn">Deactivate all</button>
         </div>
+        <details class="manage-form" id="questForm">
+          <summary id="questFormSummary">Add a quest</summary>
+          <div class="manage-grid">
+            <label>Quest ID<input type="text" id="qfId" class="manage-input" maxlength="20" placeholder="e.g. Q3.1"></label>
+            <label>Title<input type="text" id="qfTitle" class="manage-input" maxlength="120" placeholder="e.g. Golden Hour Living Room"></label>
+            <label>XP<input type="number" id="qfXp" class="manage-input" min="0" max="1000" value="25"></label>
+            <label>Required tool<input type="text" id="qfTool" class="manage-input" maxlength="80" placeholder="e.g. Midjourney (optional)"></label>
+          </div>
+          <div class="bulk-actions" style="margin-top:0.6rem; align-items:center;">
+            <button class="btn btn-primary" id="qfSave">Add quest</button>
+            <button class="btn btn-ghost hidden" id="qfCancel">Cancel editing</button>
+            <span id="qfMsg" class="bulk-status" role="status"></span>
+          </div>
+          <p class="kb-hint" style="margin:0.5rem 0 0;">New quests start Inactive, so students cannot see them until you press Activate.</p>
+        </details>
         <div class="card-list" id="questList" style="margin-top:0.75rem;"><p class="empty">Loading…</p></div>
+      </section>
+
+      <section>
+        <h2>Badges</h2>
+        <details class="manage-form" id="badgeForm">
+          <summary id="badgeFormSummary">Add a badge</summary>
+          <div class="manage-grid">
+            <label>Badge ID<input type="text" id="bfId" class="manage-input" maxlength="30" placeholder="e.g. night_owl"></label>
+            <label>Title<input type="text" id="bfTitle" class="manage-input" maxlength="60" placeholder="e.g. Night Owl"></label>
+            <label>Icon (emoji)<input type="text" id="bfIcon" class="manage-input" maxlength="8" placeholder="🦉"></label>
+            <label>Sort order<input type="number" id="bfSort" class="manage-input" value="0"></label>
+            <label>Earned by completing<select id="bfQuest" class="manage-input"><option value="">No quest (display only)</option></select></label>
+            <label>Description<input type="text" id="bfDesc" class="manage-input" maxlength="200" placeholder="Shown when students hover the badge"></label>
+          </div>
+          <div class="bulk-actions" style="margin-top:0.6rem; align-items:center;">
+            <button class="btn btn-primary" id="bfSave">Add badge</button>
+            <button class="btn btn-ghost hidden" id="bfCancel">Cancel editing</button>
+            <span id="bfMsg" class="bulk-status" role="status"></span>
+          </div>
+        </details>
+        <div class="card-list" id="badgeAdminList" style="margin-top:0.75rem;"><p class="empty">Loading…</p></div>
       </section>
 
       <section>
@@ -356,6 +414,7 @@
       document.getElementById('loginGate').style.display = 'none';
       document.getElementById('app').style.display = 'block';
       refreshAll();
+      loadAnnouncement(); // once: it is a text box the teacher edits, so it must not refresh under them
       setInterval(refreshAll, 8000);
     }
 
@@ -364,8 +423,36 @@
       renderRecentSignups();
       renderStudentList();
       renderNeedsAttention();
-      await Promise.all([loadQuests(), loadPendingSubmissions(), loadReviewedSubmissions(), loadAnalytics()]);
+      await Promise.all([loadQuests(), loadPendingSubmissions(), loadReviewedSubmissions(), loadAnalytics(), loadBadgeAdmin()]);
     }
+
+    // ---------- Class announcement ----------
+    async function loadAnnouncement() {
+      const { data } = await sb.rpc('get_announcement');
+      const msg = data && data[0] ? data[0].message : '';
+      document.getElementById('announceInput').value = msg;
+      document.getElementById('announceStatus').textContent = msg ? 'Currently showing to students.' : 'Nothing is showing.';
+    }
+
+    async function saveAnnouncement(message) {
+      const status = document.getElementById('announceStatus');
+      status.style.color = '';
+      status.textContent = 'Saving…';
+      const { error } = await sb.rpc('set_announcement', { p_teacher_key: teacherKey, p_message: message });
+      if (error) { status.style.color = '#dc2626'; status.textContent = error.message; return; }
+      status.style.color = '#16a34a';
+      status.textContent = message ? 'Published: students will see it within about 15 seconds.' : 'Cleared.';
+    }
+
+    document.getElementById('announcePublishBtn').addEventListener('click', () => {
+      const message = document.getElementById('announceInput').value.trim();
+      if (!message) { saveAnnouncement(''); return; }
+      saveAnnouncement(message);
+    });
+    document.getElementById('announceClearBtn').addEventListener('click', () => {
+      document.getElementById('announceInput').value = '';
+      saveAnnouncement('');
+    });
 
     // ---------- Needs attention: active students who have not logged in recently ----------
     function daysAgo(date) {
@@ -479,6 +566,7 @@
     async function loadQuests() {
       const { data: quests } = await sb.from('quests').select('*').order('quest_id');
       const list = document.getElementById('questList');
+      __questsCache = quests || [];
       if (!quests || quests.length === 0) { list.innerHTML = '<p class="empty">No quests found.</p>'; return; }
 
       list.innerHTML = quests.map(q => `
@@ -492,6 +580,8 @@
             <button class="btn ${q.status === 'Active' ? 'btn-ghost' : 'btn-primary'}" data-quest="${escapeHtml(q.quest_id)}" data-newstatus="${q.status === 'Active' ? 'Inactive' : 'Active'}">
               ${q.status === 'Active' ? 'Deactivate' : 'Activate'}
             </button>
+            <button class="btn btn-ghost" data-quest-edit="${escapeHtml(q.quest_id)}">Edit</button>
+            <button class="btn btn-red" data-quest-delete="${escapeHtml(q.quest_id)}">Delete</button>
           </div>
         </div>
       `).join('');
@@ -507,7 +597,207 @@
           loadQuests();
         });
       });
+
+      list.querySelectorAll('button[data-quest-edit]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const q = __questsCache.find(x => x.quest_id === btn.dataset.questEdit);
+          if (q) startQuestEdit(q);
+        });
+      });
+
+      list.querySelectorAll('button[data-quest-delete]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.questDelete;
+          if (!confirm(`Delete quest ${id}? This cannot be undone.\n\n(Quests that already have submissions cannot be deleted; deactivate them instead.)`)) return;
+          btn.disabled = true;
+          const { error } = await sb.rpc('admin_delete_quest', { p_teacher_key: teacherKey, p_quest_id: id });
+          if (error) alert(error.message);
+          loadQuests();
+          loadBadgeAdmin();
+        });
+      });
     }
+
+    // ---------- Quest form (add / edit) ----------
+    let __questsCache = [];
+    let __editingQuestId = null;
+
+    function resetQuestForm() {
+      __editingQuestId = null;
+      ['qfId', 'qfTitle', 'qfTool'].forEach(id => { document.getElementById(id).value = ''; });
+      document.getElementById('qfXp').value = '25';
+      document.getElementById('qfId').readOnly = false;
+      document.getElementById('qfSave').textContent = 'Add quest';
+      document.getElementById('qfCancel').classList.add('hidden');
+      document.getElementById('questFormSummary').textContent = 'Add a quest';
+    }
+
+    function startQuestEdit(q) {
+      __editingQuestId = q.quest_id;
+      document.getElementById('qfId').value = q.quest_id;
+      document.getElementById('qfId').readOnly = true; // the ID is the key: changing it would create a different quest
+      document.getElementById('qfTitle').value = q.title || '';
+      document.getElementById('qfXp').value = Number(q.points_xp) || 0;
+      document.getElementById('qfTool').value = q.required_tool || '';
+      document.getElementById('qfSave').textContent = 'Save changes';
+      document.getElementById('qfCancel').classList.remove('hidden');
+      document.getElementById('questFormSummary').textContent = `Editing ${q.quest_id}`;
+      document.getElementById('qfMsg').textContent = '';
+      const form = document.getElementById('questForm');
+      form.open = true;
+      form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    document.getElementById('qfCancel').addEventListener('click', resetQuestForm);
+
+    document.getElementById('qfSave').addEventListener('click', async () => {
+      const msg = document.getElementById('qfMsg');
+      const id = document.getElementById('qfId').value.trim();
+      const title = document.getElementById('qfTitle').value.trim();
+      const xp = parseInt(document.getElementById('qfXp').value);
+      const tool = document.getElementById('qfTool').value.trim();
+      msg.style.color = '#dc2626';
+      if (!/^[A-Za-z0-9._-]{1,20}$/.test(id)) { msg.textContent = 'Quest ID: 1-20 letters, numbers, dots, dashes or underscores.'; return; }
+      if (!title) { msg.textContent = 'Enter a title.'; return; }
+      if (isNaN(xp) || xp < 0 || xp > 1000) { msg.textContent = 'XP must be a number from 0 to 1000.'; return; }
+      if (!__editingQuestId && __questsCache.some(q => q.quest_id === id)) {
+        msg.textContent = `A quest with ID ${id} already exists. Use its Edit button instead.`; return;
+      }
+
+      const btn = document.getElementById('qfSave');
+      btn.disabled = true;
+      const { error } = await sb.rpc('admin_save_quest', {
+        p_teacher_key: teacherKey, p_quest_id: id, p_title: title, p_points_xp: xp, p_required_tool: tool || null,
+      });
+      btn.disabled = false;
+      if (error) { msg.textContent = error.message; return; }
+
+      const wasEditing = !!__editingQuestId;
+      resetQuestForm();
+      msg.style.color = '#16a34a';
+      msg.textContent = wasEditing ? `Saved ${id}.` : `Added ${id}. It is Inactive: press Activate when students should see it.`;
+      loadQuests();
+      loadBadgeAdmin();
+    });
+
+    // ---------- Badges (list + add / edit) ----------
+    let __badgesCache = [];
+    let __editingBadgeId = null;
+
+    async function loadBadgeAdmin() {
+      const [{ data: badges }, { data: quests }] = await Promise.all([
+        sb.from('badges').select('*').order('sort_order'),
+        sb.from('quests').select('quest_id, title').order('quest_id'),
+      ]);
+      __badgesCache = badges || [];
+      const titleById = {};
+      (quests || []).forEach(q => { titleById[q.quest_id] = q.title; });
+
+      // Keep the teacher's choice in the quest picker while its options are refreshed.
+      const select = document.getElementById('bfQuest');
+      const keep = select.value;
+      select.innerHTML = '<option value="">No quest (display only)</option>' +
+        (quests || []).map(q => `<option value="${escapeHtml(q.quest_id)}">${escapeHtml(q.quest_id)} · ${escapeHtml(q.title)}</option>`).join('');
+      select.value = keep;
+
+      const list = document.getElementById('badgeAdminList');
+      if (__badgesCache.length === 0) { list.innerHTML = '<p class="empty">No badges yet.</p>'; return; }
+      list.innerHTML = __badgesCache.map(b => `
+        <div class="row-card">
+          <div class="row-main">
+            <div class="row-title">${escapeHtml(b.icon)} ${escapeHtml(b.title)}</div>
+            <div class="row-sub">${b.unlock_quest_id ? `Earned by completing ${escapeHtml(b.unlock_quest_id)}${titleById[b.unlock_quest_id] ? ' · ' + escapeHtml(titleById[b.unlock_quest_id]) : ''}` : 'No quest linked (display only)'} · order ${Number(b.sort_order) || 0}</div>
+            ${b.description ? `<div class="row-sub">${escapeHtml(b.description)}</div>` : ''}
+          </div>
+          <div class="row-actions">
+            <button class="btn btn-ghost" data-badge-edit="${escapeHtml(b.badge_id)}">Edit</button>
+            <button class="btn btn-red" data-badge-delete="${escapeHtml(b.badge_id)}">Delete</button>
+          </div>
+        </div>
+      `).join('');
+
+      list.querySelectorAll('button[data-badge-edit]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const b = __badgesCache.find(x => x.badge_id === btn.dataset.badgeEdit);
+          if (b) startBadgeEdit(b);
+        });
+      });
+      list.querySelectorAll('button[data-badge-delete]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.badgeDelete;
+          if (!confirm(`Delete badge ${id}? It will also be removed from every student who earned it. This cannot be undone.`)) return;
+          btn.disabled = true;
+          const { error } = await sb.rpc('admin_delete_badge', { p_teacher_key: teacherKey, p_badge_id: id });
+          if (error) alert(error.message);
+          loadBadgeAdmin();
+        });
+      });
+    }
+
+    function resetBadgeForm() {
+      __editingBadgeId = null;
+      ['bfId', 'bfTitle', 'bfIcon', 'bfDesc'].forEach(id => { document.getElementById(id).value = ''; });
+      document.getElementById('bfSort').value = '0';
+      document.getElementById('bfQuest').value = '';
+      document.getElementById('bfId').readOnly = false;
+      document.getElementById('bfSave').textContent = 'Add badge';
+      document.getElementById('bfCancel').classList.add('hidden');
+      document.getElementById('badgeFormSummary').textContent = 'Add a badge';
+    }
+
+    function startBadgeEdit(b) {
+      __editingBadgeId = b.badge_id;
+      document.getElementById('bfId').value = b.badge_id;
+      document.getElementById('bfId').readOnly = true;
+      document.getElementById('bfTitle').value = b.title || '';
+      document.getElementById('bfIcon').value = b.icon || '';
+      document.getElementById('bfDesc').value = b.description || '';
+      document.getElementById('bfSort').value = Number(b.sort_order) || 0;
+      document.getElementById('bfQuest').value = b.unlock_quest_id || '';
+      document.getElementById('bfSave').textContent = 'Save changes';
+      document.getElementById('bfCancel').classList.remove('hidden');
+      document.getElementById('badgeFormSummary').textContent = `Editing ${b.badge_id}`;
+      document.getElementById('bfMsg').textContent = '';
+      const form = document.getElementById('badgeForm');
+      form.open = true;
+      form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    document.getElementById('bfCancel').addEventListener('click', resetBadgeForm);
+
+    document.getElementById('bfSave').addEventListener('click', async () => {
+      const msg = document.getElementById('bfMsg');
+      const id = document.getElementById('bfId').value.trim();
+      const title = document.getElementById('bfTitle').value.trim();
+      const icon = document.getElementById('bfIcon').value.trim();
+      msg.style.color = '#dc2626';
+      if (!/^[A-Za-z0-9_-]{1,30}$/.test(id)) { msg.textContent = 'Badge ID: 1-30 letters, numbers, dashes or underscores.'; return; }
+      if (!title) { msg.textContent = 'Enter a title.'; return; }
+      if (!icon) { msg.textContent = 'Enter an emoji or short symbol as the icon.'; return; }
+      if (!__editingBadgeId && __badgesCache.some(b => b.badge_id === id)) {
+        msg.textContent = `A badge with ID ${id} already exists. Use its Edit button instead.`; return;
+      }
+
+      const btn = document.getElementById('bfSave');
+      btn.disabled = true;
+      const { error } = await sb.rpc('admin_save_badge', {
+        p_teacher_key: teacherKey,
+        p_badge_id: id,
+        p_title: title,
+        p_icon: icon,
+        p_description: document.getElementById('bfDesc').value.trim() || null,
+        p_unlock_quest_id: document.getElementById('bfQuest').value || null,
+        p_sort_order: parseInt(document.getElementById('bfSort').value) || 0,
+      });
+      btn.disabled = false;
+      if (error) { msg.textContent = error.message; return; }
+
+      const wasEditing = !!__editingBadgeId;
+      resetBadgeForm();
+      msg.style.color = '#16a34a';
+      msg.textContent = wasEditing ? `Saved ${id}.` : `Added ${id}.`;
+      loadBadgeAdmin();
+    });
 
     // ---------- Pending submissions ----------
     const FEEDBACK_CHIPS = [
