@@ -131,6 +131,12 @@
     .detail-h { margin: 1rem 0 0.5rem; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--gray); }
     .detail-badge { display: inline-block; background: #fef3c7; color: var(--amber); border-radius: 100px; padding: 3px 10px; font-size: 0.75rem; font-weight: 600; margin: 0 0.3rem 0.3rem 0; }
     .detail-item { border: 1px solid var(--gray-light); border-radius: 10px; padding: 0.7rem 0.9rem; margin-bottom: 0.5rem; }
+    .xp-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.35rem 0; border-bottom: 1px solid var(--gray-light); font-size: 0.85rem; }
+    .xp-row .xp-what { flex: 1; }
+    .xp-row.undone { opacity: 0.5; text-decoration: line-through; }
+    .xp-delta { font-weight: 700; min-width: 3.2rem; }
+    .xp-delta.plus { color: var(--green); }
+    .xp-delta.minus { color: var(--red); }
     .detail-item-top { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
     .fb-chips { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 6px; }
     .chip {
@@ -1061,9 +1067,22 @@
             <div class="row-sub">${escapeHtml(when)}</div>
           </div>
           <span class="tag ${isApproved ? 'approved' : 'iteration'}">${isApproved ? `Approved · +${Number(s.xp_awarded) || 0} XP` : 'Needs Iteration'}</span>
+          <div class="row-actions">
+            <button class="btn btn-ghost" data-undo-review="${Number(s.submission_id)}" title="Send this back to Pending">Undo</button>
+          </div>
         </div>
       `;
       }).join('');
+
+      list.querySelectorAll('button[data-undo-review]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (!confirm('Undo this review?\n\nThe submission goes back to Pending, the XP is taken back, and any badge it earned is removed (unless another approved submission still earns it).')) return;
+          btn.disabled = true;
+          const { error } = await sb.rpc('undo_review', { p_teacher_key: teacherKey, p_submission_id: parseInt(btn.dataset.undoReview) });
+          if (error) { btn.disabled = false; alert('Could not undo: ' + error.message); return; }
+          refreshAll();
+        });
+      });
     }
 
     // ---------- Students + quick XP + management ----------
@@ -1128,11 +1147,12 @@
       list.querySelectorAll('button[data-quickxp]').forEach(btn => {
         btn.addEventListener('click', async () => {
           btn.disabled = true;
-          await sb.rpc('award_quick_xp', {
+          const { error } = await sb.rpc('award_quick_xp', {
             p_teacher_key: teacherKey,
             p_student_id: parseInt(btn.dataset.quickxp),
             p_xp: parseInt(btn.dataset.amount),
           });
+          if (error) alert('Could not award XP: ' + error.message);
           refreshStudents();
         });
       });
@@ -1386,11 +1406,12 @@
       modal.addEventListener('click', (e) => { if (e.target === modal || e.target.classList.contains('modal-close')) closeStudentDetail(); });
       document.body.appendChild(modal);
 
-      const [pending, reviewed, allBadges, mine] = await Promise.all([
+      const [pending, reviewed, allBadges, mine, ledger] = await Promise.all([
         sb.rpc('admin_list_pending_submissions', { p_teacher_key: teacherKey }),
         sb.rpc('admin_list_reviewed_submissions', { p_teacher_key: teacherKey }),
         sb.from('badges').select('badge_id, title, icon').order('sort_order'),
         sb.from('student_badges').select('badge_id').eq('student_id', id),
+        sb.rpc('admin_list_xp_ledger', { p_teacher_key: teacherKey, p_student_id: id }),
       ]);
       if (token !== __detailToken) return; // closed or replaced while loading
       const body = document.getElementById('studentModalBody');
@@ -1438,6 +1459,21 @@
       const note = (reviewed.data || []).length >= 200
         ? '<p class="row-sub">Older reviews may be missing: the reviewed list shows the latest 200 across the class.</p>' : '';
 
+      // XP history: every change to this student's XP. Quick awards can be undone here; reviews are undone
+      // from the Reviewed Submissions list.
+      const xpHtml = ledger.error
+        ? '<p class="row-sub">XP history is unavailable right now.</p>'
+        : ((ledger.data || []).map(e => {
+            const d = Number(e.delta) || 0;
+            return `
+              <div class="xp-row${e.undone ? ' undone' : ''}">
+                <span class="xp-delta ${d >= 0 ? 'plus' : 'minus'}">${d > 0 ? '+' : ''}${d}</span>
+                <span class="xp-what">${escapeHtml(e.reason)}${e.quest_title ? ' · ' + escapeHtml(e.quest_title) : ''}${e.undone ? ' (undone)' : ''}</span>
+                <span class="row-sub">${escapeHtml(shortDate(e.created_at))}</span>
+                ${e.reason === 'Quick award' && !e.undone ? `<button class="btn btn-ghost" data-undo-xp="${Number(e.id)}">Undo</button>` : ''}
+              </div>`;
+          }).join('') || '<p class="row-sub">No XP changes recorded yet.</p>');
+
       body.innerHTML = `
         <h3 class="detail-name">${escapeHtml(student.name)} ${student.is_active ? '' : '<span class="tag inactive">Deactivated</span>'}</h3>
         <div class="row-sub">${escapeHtml(student.studio_role || 'No role given')} · ${escapeHtml(student.tier_level)} · ${Number(student.total_xp) || 0} XP · PIN ${escapeHtml(student.pin_code || '—')}</div>
@@ -1450,9 +1486,22 @@
         </div>
         <h4 class="detail-h">Badges</h4>
         <div>${badgeHtml || '<span class="row-sub">No badges yet.</span>'}</div>
+        <h4 class="detail-h">XP history</h4>
+        ${xpHtml}
         <h4 class="detail-h">Submissions</h4>
         ${timeline || '<p class="empty">No submissions yet.</p>'}
         ${note}`;
+
+      body.querySelectorAll('button[data-undo-xp]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (!confirm('Undo this XP award? The XP is taken back from the student.')) return;
+          btn.disabled = true;
+          const { error } = await sb.rpc('undo_quick_xp', { p_teacher_key: teacherKey, p_ledger_id: parseInt(btn.dataset.undoXp) });
+          if (error) { btn.disabled = false; alert('Could not undo: ' + error.message); return; }
+          refreshStudents();
+          openStudentDetail(id); // reload the panel with the corrected XP
+        });
+      });
     }
 
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeStudentDetail(); });
