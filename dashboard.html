@@ -207,6 +207,24 @@
       font-size: 0.75rem; font-weight: 600; cursor: pointer; font-family: inherit; margin-top: 0.4rem;
     }
     .copy-btn.copied { background: #dcfce7; color: #16a34a; }
+    .fav-btn { margin-left: 0.4rem; }
+    .fav-btn.on { background: #fef3c7; color: #b45309; }
+
+    /* Gallery filter + lightbox */
+    .gallery-filter { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; font-size: 0.85rem; color: var(--gray); }
+    .gallery-filter select { border: 1.5px solid var(--gray-light); border-radius: 8px; padding: 6px 10px; font-size: 0.85rem; font-family: inherit; background: white; }
+    .lightbox {
+      position: fixed; inset: 0; background: rgba(17, 24, 39, 0.85); z-index: 10001;
+      display: flex; align-items: center; justify-content: center; padding: 1rem;
+    }
+    .lightbox-inner { position: relative; max-width: 96vw; max-height: 94vh; display: flex; flex-direction: column; align-items: center; gap: 0.6rem; }
+    .lightbox-inner img { max-width: 100%; max-height: 82vh; border-radius: 10px; background: white; }
+    .lightbox-cap { color: white; font-size: 0.85rem; text-align: center; }
+    .lightbox-cap a { color: #fbcfe8; }
+    .lightbox-close {
+      position: absolute; top: -12px; right: -12px; width: 32px; height: 32px; border-radius: 50%;
+      border: none; background: white; color: #111827; font-size: 1rem; cursor: pointer; box-shadow: 0 2px 8px rgb(0 0 0 / 0.3);
+    }
 
     /* Celebration: confetti + toast on approval / level-up */
     .confetti-piece {
@@ -280,12 +298,19 @@
 
     <section id="tab-gallery" class="hidden">
       <h3>Class Gallery — Approved Work</h3>
+      <div class="gallery-filter hidden" id="galleryFilter">
+        <label for="galleryQuest">Show work from</label>
+        <select id="galleryQuest"><option value="">All quests</option></select>
+      </div>
       <div class="gallery-grid" id="galleryGrid"><p class="empty">Loading gallery…</p></div>
     </section>
 
     <section id="tab-prompts" class="hidden">
       <h3>Prompt Library</h3>
       <input type="text" id="promptSearch" class="prompt-search" placeholder="Search prompts by title, tool or category…">
+      <div class="cat-chips">
+        <button type="button" class="cat-chip" id="favToggle" aria-pressed="false">★ Saved only</button>
+      </div>
       <div class="cat-chips hidden" id="promptCats"></div>
       <div class="prompt-list" id="promptList"><p class="empty">Loading prompts…</p></div>
     </section>
@@ -767,28 +792,90 @@
       const nameById = {};
       (names || []).forEach(n => { nameById[n.student_id] = n.name; });
 
+      __galleryItems = (subs || []).map(s => ({
+        s,
+        who: nameById[s.student_id] || 'Student',
+        what: s.quests?.title || s.quest_id,
+      }));
+
+      // Quest filter: only quests that actually have work in the gallery; keep the current choice if still valid.
+      const select = document.getElementById('galleryQuest');
+      const previous = select.value;
+      const quests = new Map();
+      __galleryItems.forEach(i => quests.set(i.s.quest_id, i.what));
+      select.innerHTML = '<option value="">All quests</option>' +
+        [...quests].map(([id, title]) => `<option value="${escapeHtml(id)}">${escapeHtml(title)}</option>`).join('');
+      select.value = quests.has(previous) ? previous : '';
+      document.getElementById('galleryFilter').classList.toggle('hidden', quests.size < 2);
+
+      renderGallery();
+    }
+
+    let __galleryItems = [];
+
+    function renderGallery() {
       const grid = document.getElementById('galleryGrid');
-      if (!subs || subs.length === 0) {
+      const filter = document.getElementById('galleryQuest').value;
+      const items = filter ? __galleryItems.filter(i => i.s.quest_id === filter) : __galleryItems;
+
+      if (items.length === 0) {
         grid.innerHTML = '<p class="empty">No approved work with files yet — be the first!</p>';
         return;
       }
 
-      grid.innerHTML = subs.map(s => {
+      grid.innerHTML = items.map(({ s, who, what }) => {
         const url = escapeHtml(storageUrl(s.file_path));
         const visual = s.file_type === 'image'
-          ? `<a href="${url}" target="_blank" rel="noopener noreferrer"><img src="${url}" alt="Approved work"></a>`
+          ? `<a href="${url}" target="_blank" rel="noopener noreferrer" class="lightbox-link" data-caption="${escapeHtml(who + ' — ' + what)}"><img src="${url}" alt="Approved work"></a>`
           : `<a href="${url}" target="_blank" rel="noopener noreferrer" class="pdf-tile">📄</a>`;
         return `
           <div class="gallery-card">
             ${visual}
             <div class="meta">
-              <div class="who">${escapeHtml(nameById[s.student_id] || 'Student')}</div>
-              <div class="what">${escapeHtml(s.quests?.title || s.quest_id)}</div>
+              <div class="who">${escapeHtml(who)}</div>
+              <div class="what">${escapeHtml(what)}</div>
             </div>
           </div>
         `;
       }).join('');
+
+      // Clicking an image opens it larger in place; modified clicks (new tab etc.) keep the normal link behaviour.
+      grid.querySelectorAll('a.lightbox-link').forEach(a => {
+        a.addEventListener('click', (e) => {
+          if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+          e.preventDefault();
+          openLightbox(a.href, a.dataset.caption || '');
+        });
+      });
     }
+
+    document.getElementById('galleryQuest').addEventListener('change', renderGallery);
+
+    function closeLightbox() {
+      const ov = document.getElementById('lightbox');
+      if (ov) ov.remove();
+    }
+
+    function openLightbox(url, caption) {
+      closeLightbox();
+      const ov = document.createElement('div');
+      ov.id = 'lightbox';
+      ov.className = 'lightbox';
+      ov.setAttribute('role', 'dialog');
+      ov.setAttribute('aria-label', 'Enlarged work');
+      ov.innerHTML = `
+        <div class="lightbox-inner">
+          <button type="button" class="lightbox-close" aria-label="Close">✕</button>
+          <img src="${escapeHtml(url)}" alt="${escapeHtml(caption)}">
+          <div class="lightbox-cap">${escapeHtml(caption)} · <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Open original</a></div>
+        </div>`;
+      ov.addEventListener('click', (e) => {
+        if (e.target === ov || e.target.classList.contains('lightbox-close')) closeLightbox();
+      });
+      document.body.appendChild(ov);
+    }
+
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLightbox(); });
 
     // ---------- Prompt library ----------
     let __allPrompts = [];
@@ -819,9 +906,31 @@
       });
     }
 
+    // Saved prompts live in this browser only (per student); storage can be unavailable, so it is always guarded.
+    const FAV_KEY = 'cindrebay_fav_prompts_' + (session ? session.student_id : 'anon');
+    let __favPromptIds = new Set();
+    try {
+      const saved = JSON.parse(localStorage.getItem(FAV_KEY) || '[]');
+      if (Array.isArray(saved)) __favPromptIds = new Set(saved.map(Number));
+    } catch (e) { /* no saved prompts */ }
+    let __favOnly = false;
+
+    function saveFavs() {
+      try { localStorage.setItem(FAV_KEY, JSON.stringify([...__favPromptIds])); } catch (e) { /* storage unavailable */ }
+    }
+
+    document.getElementById('favToggle').addEventListener('click', () => {
+      __favOnly = !__favOnly;
+      const btn = document.getElementById('favToggle');
+      btn.classList.toggle('active', __favOnly);
+      btn.setAttribute('aria-pressed', String(__favOnly));
+      renderPrompts();
+    });
+
     function renderPrompts() {
       const q = (document.getElementById('promptSearch').value || '').toLowerCase().trim();
-      const pool = __promptCategory ? __allPrompts.filter(p => p.category === __promptCategory) : __allPrompts;
+      let pool = __promptCategory ? __allPrompts.filter(p => p.category === __promptCategory) : __allPrompts;
+      if (__favOnly) pool = pool.filter(p => __favPromptIds.has(Number(p.prompt_id)));
       const list = q
         ? pool.filter(p =>
             (p.title || '').toLowerCase().includes(q) ||
@@ -831,7 +940,12 @@
         : pool;
 
       const el = document.getElementById('promptList');
-      if (list.length === 0) { el.innerHTML = '<p class="empty">No prompts match your search.</p>'; return; }
+      if (list.length === 0) {
+        el.innerHTML = __favOnly && !q
+          ? '<p class="empty">No saved prompts here yet — tap ☆ Save on a prompt to keep it.</p>'
+          : '<p class="empty">No prompts match your search.</p>';
+        return;
+      }
 
       el.innerHTML = list.map(p => `
         <div class="prompt-card">
@@ -842,8 +956,18 @@
           <pre id="prompt-${Number(p.prompt_id)}">${escapeHtml(p.prompt_text)}</pre>
           ${p.notes ? `<div class="notes">${escapeHtml(p.notes)}</div>` : ''}
           <button class="copy-btn" data-copy="${Number(p.prompt_id)}">Copy prompt</button>
+          <button class="copy-btn fav-btn ${__favPromptIds.has(Number(p.prompt_id)) ? 'on' : ''}" data-fav="${Number(p.prompt_id)}" aria-pressed="${__favPromptIds.has(Number(p.prompt_id))}">${__favPromptIds.has(Number(p.prompt_id)) ? '★ Saved' : '☆ Save'}</button>
         </div>
       `).join('');
+
+      el.querySelectorAll('button[data-fav]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.dataset.fav);
+          if (__favPromptIds.has(id)) __favPromptIds.delete(id); else __favPromptIds.add(id);
+          saveFavs();
+          renderPrompts();
+        });
+      });
 
       el.querySelectorAll('button[data-copy]').forEach(btn => {
         btn.addEventListener('click', async () => {
