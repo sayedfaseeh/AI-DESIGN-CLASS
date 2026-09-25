@@ -22,7 +22,9 @@
       color: var(--charcoal); min-height: 100vh; padding: 2.5rem;
     }
     .title-bar { text-align: center; margin-bottom: 2rem; }
-    .title-bar img { height: 56px; margin-bottom: 0.75rem; }
+    /* The logo is a block so it sits centred on its own line; as an inline image it shared a line with the badge
+       and pushed the logo off-centre from the title. */
+    .title-bar img { display: block; height: 56px; margin: 0 auto 0.75rem; }
     .badge {
       display: inline-block; background: var(--pink-light); color: var(--pink);
       font-size: 0.75rem; font-weight: 600; padding: 4px 10px; border-radius: 100px;
@@ -76,7 +78,9 @@
     .feed-xp { color: var(--green); font-weight: 700; white-space: nowrap; }
 
     .qr-box { text-align: center; margin-top: 1.5rem; }
-    .qr-box canvas { border-radius: 12px; border: 1px solid var(--gray-light); padding: 10px; }
+    /* The QR library swaps its canvas for a block-level image, which text-align cannot centre: centre it with flex. */
+    #qrcode { display: flex; justify-content: center; }
+    #qrcode img, #qrcode canvas { border-radius: 12px; border: 1px solid var(--gray-light); padding: 10px; background: white; }
     .qr-box p { margin-top: 0.75rem; color: var(--gray); font-size: 0.9rem; }
     .empty { color: var(--gray); text-align: center; padding: 1rem 0; font-size: 0.9rem; }
     .announce-banner {
@@ -127,6 +131,10 @@
     @media (max-width: 860px) {
       body { padding: 1.25rem; }
       .layout { grid-template-columns: 1fr; }
+      /* One column: keep the original order (leaderboard, featured, recent, QR) even though the QR panel now
+         lives in the left column on wide screens. */
+      .left-col, .right-col { display: contents; }
+      .qr-box { order: 99; }
     }
   </style>
 </head>
@@ -154,16 +162,22 @@
   </div>
 
   <div class="layout">
-    <div class="panel">
-      <h2>🏆 Leaderboard</h2>
-      <div id="podium"></div>
-      <table>
-        <thead><tr><th>#</th><th>Name</th><th>Tier</th><th style="text-align:right">XP</th></tr></thead>
-        <tbody id="leaderboardBody"></tbody>
-      </table>
+    <div class="left-col">
+      <div class="panel">
+        <h2>🏆 Leaderboard</h2>
+        <div id="podium"></div>
+        <table>
+          <thead><tr><th>#</th><th>Name</th><th>Tier</th><th style="text-align:right">XP</th></tr></thead>
+          <tbody id="leaderboardBody"></tbody>
+        </table>
+      </div>
+      <div class="panel qr-box" style="margin-top: 1.5rem;">
+        <div id="qrcode"></div>
+        <p>Scan to join — enter your PIN to start</p>
+      </div>
     </div>
 
-    <div>
+    <div class="right-col">
       <div class="panel">
         <h2>🖼️ Featured Work</h2>
         <div id="featuredWork"><p class="empty">Waiting for approved work…</p></div>
@@ -171,10 +185,6 @@
       <div class="panel" style="margin-top: 1.5rem;">
         <h2>✨ Recent Approved Work</h2>
         <div id="recentFeed"><p class="empty">Waiting for submissions…</p></div>
-      </div>
-      <div class="panel qr-box" style="margin-top: 1.5rem;">
-        <div id="qrcode"></div>
-        <p>Scan to join — enter your PIN to start</p>
       </div>
     </div>
   </div>
