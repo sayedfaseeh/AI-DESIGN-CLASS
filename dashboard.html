@@ -272,6 +272,16 @@
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvaXBqcnJ2b3VjaHh2Y2RycGJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NjUwNTcsImV4cCI6MjEwNTI0MTA1N30.kMnLYLLwnEXdRDEy1uIzYSaA9I_w4SvmrXL83_Fhggw';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+    // Escapes text for both element content and quoted attribute values.
+    // Everything that comes from the database (names, titles, notes) goes through this before innerHTML.
+    function escapeHtml(str) {
+      return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    function storageUrl(path) {
+      return `${SUPABASE_URL}/storage/v1/object/public/submissions/${encodeURIComponent(path)}`;
+    }
+
     const session = JSON.parse(localStorage.getItem('cindrebay_student') || 'null');
     if (!session) window.location.href = 'index.html';
 
@@ -443,17 +453,17 @@
         const mySub = subsByQuest[q.quest_id];
         let statusHtml = '';
         if (mySub) {
-          if (mySub.status === 'Approved') statusHtml = `<div class="my-status status-approved">✓ Approved · +${mySub.xp_awarded} XP</div>`;
+          if (mySub.status === 'Approved') statusHtml = `<div class="my-status status-approved">✓ Approved · +${Number(mySub.xp_awarded) || 0} XP</div>`;
           else if (mySub.status === 'Pending Review') statusHtml = `<div class="my-status status-pending">⏳ Pending review</div>`;
           else statusHtml = `<div class="my-status status-iteration">↻ Needs another try</div>`;
         }
         return `
-          <div class="quest" data-quest-id="${q.quest_id}" data-quest-title="${q.title}">
+          <div class="quest" data-quest-id="${escapeHtml(q.quest_id)}" data-quest-title="${escapeHtml(q.title)}">
             <div class="quest-top">
-              <h4>${q.title}</h4>
-              <span class="xp-pill">+${q.points_xp} XP</span>
+              <h4>${escapeHtml(q.title)}</h4>
+              <span class="xp-pill">+${Number(q.points_xp) || 0} XP</span>
             </div>
-            <div class="tool">${q.required_tool || ''}</div>
+            <div class="tool">${escapeHtml(q.required_tool || '')}</div>
             ${statusHtml}
           </div>
         `;
@@ -598,9 +608,9 @@
       __prevBadgeIds = earned;
 
       grid.innerHTML = allBadges.map(b => `
-        <div class="badge-item ${earned.has(b.badge_id) ? '' : 'locked'}" title="${b.description || ''}">
-          <div class="icon">${b.icon}</div>
-          <div class="name">${b.title}</div>
+        <div class="badge-item ${earned.has(b.badge_id) ? '' : 'locked'}" title="${escapeHtml(b.description || '')}">
+          <div class="icon">${escapeHtml(b.icon)}</div>
+          <div class="name">${escapeHtml(b.title)}</div>
         </div>
       `).join('');
     }
@@ -627,16 +637,16 @@
       }
 
       grid.innerHTML = subs.map(s => {
-        const url = `${SUPABASE_URL}/storage/v1/object/public/submissions/${s.file_path}`;
+        const url = escapeHtml(storageUrl(s.file_path));
         const visual = s.file_type === 'image'
-          ? `<a href="${url}" target="_blank"><img src="${url}" alt="Approved work"></a>`
-          : `<a href="${url}" target="_blank" class="pdf-tile">📄</a>`;
+          ? `<a href="${url}" target="_blank" rel="noopener noreferrer"><img src="${url}" alt="Approved work"></a>`
+          : `<a href="${url}" target="_blank" rel="noopener noreferrer" class="pdf-tile">📄</a>`;
         return `
           <div class="gallery-card">
             ${visual}
             <div class="meta">
-              <div class="who">${nameById[s.student_id] || 'Student'}</div>
-              <div class="what">${s.quests?.title || s.quest_id}</div>
+              <div class="who">${escapeHtml(nameById[s.student_id] || 'Student')}</div>
+              <div class="what">${escapeHtml(s.quests?.title || s.quest_id)}</div>
             </div>
           </div>
         `;
@@ -669,12 +679,12 @@
       el.innerHTML = list.map(p => `
         <div class="prompt-card">
           <div class="top">
-            <h4>${p.title}</h4>
-            <span class="tool-tag">${p.tool || p.category}</span>
+            <h4>${escapeHtml(p.title)}</h4>
+            <span class="tool-tag">${escapeHtml(p.tool || p.category)}</span>
           </div>
-          <pre id="prompt-${p.prompt_id}">${p.prompt_text.replace(/</g, '&lt;')}</pre>
-          ${p.notes ? `<div class="notes">${p.notes}</div>` : ''}
-          <button class="copy-btn" data-copy="${p.prompt_id}">Copy prompt</button>
+          <pre id="prompt-${Number(p.prompt_id)}">${escapeHtml(p.prompt_text)}</pre>
+          ${p.notes ? `<div class="notes">${escapeHtml(p.notes)}</div>` : ''}
+          <button class="copy-btn" data-copy="${Number(p.prompt_id)}">Copy prompt</button>
         </div>
       `).join('');
 
