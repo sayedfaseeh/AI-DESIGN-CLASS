@@ -251,6 +251,12 @@
 
     let teacherKey = sessionStorage.getItem('cindrebay_teacher_key');
 
+    // Student-controlled text (names, submission text, file paths) must be escaped before it reaches
+    // innerHTML on this page, because the teacher key lives in sessionStorage. See escapeHtml() below.
+    function storageUrl(path) {
+      return `${SUPABASE_URL}/storage/v1/object/public/submissions/${encodeURIComponent(path)}`;
+    }
+
     async function tryEnter(key) {
       const { data, error } = await sb.rpc('verify_teacher_key', { p_key: key });
       if (error || !data) return false;
@@ -304,7 +310,7 @@
       const max = Math.max(1, ...items.map(i => i.value));
       container.innerHTML = items.map(i => `
         <div class="chart-row">
-          <div class="chart-label" title="${i.label}">${i.label}</div>
+          <div class="chart-label" title="${escapeHtml(i.label)}">${escapeHtml(i.label)}</div>
           <div class="chart-track"><div class="chart-fill" style="width:${(i.value / max) * 100}%"></div></div>
           <div class="chart-value">${i.value}</div>
         </div>
@@ -355,8 +361,8 @@
       list.innerHTML = recent.map(s => `
         <div class="row-card">
           <div class="row-main">
-            <div class="row-title">${s.name}</div>
-            <div class="row-sub">${s.studio_role || 'No role given'} · PIN ${s.pin_code || '—'}</div>
+            <div class="row-title">${escapeHtml(s.name)}</div>
+            <div class="row-sub">${escapeHtml(s.studio_role || 'No role given')} · PIN ${escapeHtml(s.pin_code || '—')}</div>
           </div>
           <span class="tag ${s.is_active ? 'active' : 'inactive'}">${s.is_active ? 'Active' : 'Deactivated'}</span>
         </div>
@@ -372,12 +378,12 @@
       list.innerHTML = quests.map(q => `
         <div class="row-card">
           <div class="row-main">
-            <div class="row-title">${q.quest_id} · ${q.title}</div>
-            <div class="row-sub">${q.required_tool || ''} · +${q.points_xp} XP</div>
+            <div class="row-title">${escapeHtml(q.quest_id)} · ${escapeHtml(q.title)}</div>
+            <div class="row-sub">${escapeHtml(q.required_tool || '')} · +${Number(q.points_xp) || 0} XP</div>
           </div>
-          <span class="tag ${q.status === 'Active' ? 'active' : 'inactive'}">${q.status}</span>
+          <span class="tag ${q.status === 'Active' ? 'active' : 'inactive'}">${escapeHtml(q.status)}</span>
           <div class="row-actions">
-            <button class="btn ${q.status === 'Active' ? 'btn-ghost' : 'btn-primary'}" data-quest="${q.quest_id}" data-newstatus="${q.status === 'Active' ? 'Inactive' : 'Active'}">
+            <button class="btn ${q.status === 'Active' ? 'btn-ghost' : 'btn-primary'}" data-quest="${escapeHtml(q.quest_id)}" data-newstatus="${q.status === 'Active' ? 'Inactive' : 'Active'}">
               ${q.status === 'Active' ? 'Deactivate' : 'Activate'}
             </button>
           </div>
@@ -408,25 +414,25 @@
       list.innerHTML = subs.map(s => {
         let fileHtml = '';
         if (s.file_path) {
-          const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/submissions/${s.file_path}`;
+          const publicUrl = escapeHtml(storageUrl(s.file_path));
           if (s.file_type === 'image') {
-            fileHtml = `<a href="${publicUrl}" target="_blank"><img src="${publicUrl}" alt="Submission file" class="submission-thumb"></a>`;
+            fileHtml = `<a href="${publicUrl}" target="_blank" rel="noopener noreferrer"><img src="${publicUrl}" alt="Submission file" class="submission-thumb"></a>`;
           } else {
-            fileHtml = `<a href="${publicUrl}" target="_blank" class="pdf-link">📄 View PDF</a>`;
+            fileHtml = `<a href="${publicUrl}" target="_blank" rel="noopener noreferrer" class="pdf-link">📄 View PDF</a>`;
           }
         }
         return `
         <div class="row-card">
           <div class="row-main">
-            <div class="row-title">${s.student_name || 'Unknown'} — ${s.quest_title || s.quest_id}</div>
-            ${s.image_or_link ? `<div class="row-sub link-preview">${s.image_or_link.slice(0, 80)}</div>` : ''}
+            <div class="row-title">${escapeHtml(s.student_name || 'Unknown')} — ${escapeHtml(s.quest_title || s.quest_id)}</div>
+            ${s.image_or_link ? `<div class="row-sub link-preview">${escapeHtml(s.image_or_link.slice(0, 80))}</div>` : ''}
             ${fileHtml}
           </div>
           <span class="tag pending">Pending</span>
           <div class="row-actions">
-            <input type="number" class="xp-input" value="${s.quest_points_xp || 0}" id="xp-${s.submission_id}">
-            <button class="btn btn-green" data-approve="${s.submission_id}">Approve</button>
-            <button class="btn btn-red" data-reject="${s.submission_id}">Needs Work</button>
+            <input type="number" class="xp-input" value="${Number(s.quest_points_xp) || 0}" id="xp-${Number(s.submission_id)}">
+            <button class="btn btn-green" data-approve="${Number(s.submission_id)}">Approve</button>
+            <button class="btn btn-red" data-reject="${Number(s.submission_id)}">Needs Work</button>
           </div>
         </div>
       `;
@@ -476,12 +482,12 @@
         return `
         <div class="row-card">
           <div class="row-main">
-            <div class="row-title">${s.student_name || 'Unknown'} — ${s.quest_title || s.quest_id}</div>
-            ${s.image_or_link ? `<div class="row-sub link-preview">${s.image_or_link.slice(0, 80)}</div>` : ''}
-            ${s.feedback_note ? `<div class="row-sub">Feedback: ${s.feedback_note}</div>` : ''}
-            <div class="row-sub">${when}</div>
+            <div class="row-title">${escapeHtml(s.student_name || 'Unknown')} — ${escapeHtml(s.quest_title || s.quest_id)}</div>
+            ${s.image_or_link ? `<div class="row-sub link-preview">${escapeHtml(s.image_or_link.slice(0, 80))}</div>` : ''}
+            ${s.feedback_note ? `<div class="row-sub">Feedback: ${escapeHtml(s.feedback_note)}</div>` : ''}
+            <div class="row-sub">${escapeHtml(when)}</div>
           </div>
-          <span class="tag ${isApproved ? 'approved' : 'iteration'}">${isApproved ? `Approved · +${s.xp_awarded} XP` : 'Needs Iteration'}</span>
+          <span class="tag ${isApproved ? 'approved' : 'iteration'}">${isApproved ? `Approved · +${Number(s.xp_awarded) || 0} XP` : 'Needs Iteration'}</span>
         </div>
       `;
       }).join('');
@@ -532,15 +538,15 @@
       list.innerHTML = pageItems.map(s => `
         <div class="row-card" style="${s.is_active ? '' : 'opacity:0.55;'}">
           <div class="row-main">
-            <div class="row-title">${s.name} ${s.is_active ? '' : '<span class="tag inactive" style="margin-left:6px;">Deactivated</span>'}</div>
-            <div class="row-sub">${s.studio_role || ''} · ${s.tier_level} · ${s.total_xp} XP · PIN ${s.pin_code || '—'}</div>
+            <div class="row-title">${escapeHtml(s.name)} ${s.is_active ? '' : '<span class="tag inactive" style="margin-left:6px;">Deactivated</span>'}</div>
+            <div class="row-sub">${escapeHtml(s.studio_role || '')} · ${escapeHtml(s.tier_level)} · ${Number(s.total_xp) || 0} XP · PIN ${escapeHtml(s.pin_code || '—')}</div>
           </div>
           <div class="row-actions">
-            <button class="btn btn-ghost" data-quickxp="${s.student_id}" data-amount="10">+10</button>
-            <button class="btn btn-ghost" data-quickxp="${s.student_id}" data-amount="25">+25</button>
-            <button class="btn btn-ghost" data-edit="${s.student_id}">Edit</button>
-            <button class="btn ${s.is_active ? 'btn-ghost' : 'btn-green'}" data-toggleactive="${s.student_id}" data-newactive="${s.is_active ? 'false' : 'true'}">${s.is_active ? 'Deactivate' : 'Reactivate'}</button>
-            <button class="btn btn-red" data-delete="${s.student_id}">Delete</button>
+            <button class="btn btn-ghost" data-quickxp="${Number(s.student_id)}" data-amount="10">+10</button>
+            <button class="btn btn-ghost" data-quickxp="${Number(s.student_id)}" data-amount="25">+25</button>
+            <button class="btn btn-ghost" data-edit="${Number(s.student_id)}">Edit</button>
+            <button class="btn ${s.is_active ? 'btn-ghost' : 'btn-green'}" data-toggleactive="${Number(s.student_id)}" data-newactive="${s.is_active ? 'false' : 'true'}">${s.is_active ? 'Deactivate' : 'Reactivate'}</button>
+            <button class="btn btn-red" data-delete="${Number(s.student_id)}">Delete</button>
           </div>
         </div>
       `).join('');
@@ -712,7 +718,7 @@
 
       msg.style.color = '#16a34a';
       msg.innerHTML = `Imported ${data.length} student${data.length === 1 ? '' : 's'}:<br>` +
-        data.map(s => `${s.name} — PIN <strong style="font-family:ui-monospace,monospace;">${s.assigned_pin}</strong>`).join('<br>');
+        data.map(s => `${escapeHtml(s.name)} — PIN <strong style="font-family:ui-monospace,monospace;">${escapeHtml(s.assigned_pin)}</strong>`).join('<br>');
       document.getElementById('bulkImportInput').value = '';
       refreshStudents();
     });
@@ -808,10 +814,10 @@
       const cards = approved.map(s => {
         let visual = '';
         if (s.file_path) {
-          const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/submissions/${s.file_path}`;
+          const publicUrl = escapeHtml(storageUrl(s.file_path));
           visual = s.file_type === 'image'
-            ? `<a href="${publicUrl}" target="_blank"><img src="${publicUrl}" alt="Approved work"></a>`
-            : `<a href="${publicUrl}" target="_blank" class="pdf-tile">📄 View PDF</a>`;
+            ? `<a href="${publicUrl}" target="_blank" rel="noopener noreferrer"><img src="${publicUrl}" alt="Approved work"></a>`
+            : `<a href="${publicUrl}" target="_blank" rel="noopener noreferrer" class="pdf-tile">📄 View PDF</a>`;
         } else if (s.image_or_link) {
           visual = `<div class="link-tile">${escapeHtml(s.image_or_link)}</div>`;
         }

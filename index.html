@@ -108,6 +108,10 @@
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvaXBqcnJ2b3VjaHh2Y2RycGJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NjUwNTcsImV4cCI6MjEwNTI0MTA1N30.kMnLYLLwnEXdRDEy1uIzYSaA9I_w4SvmrXL83_Fhggw';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+    function escapeHtml(str) {
+      return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
     const form = document.getElementById('loginForm');
     const pinInput = document.getElementById('pin');
     const message = document.getElementById('message');
@@ -233,7 +237,7 @@
 
         regMsg.style.color = '#16a34a';
         regMsg.innerHTML = pin
-          ? `Welcome, ${name.split(' ')[0]}! Your PIN is <strong style="font-family:'JetBrains Mono',monospace; font-size:1.1em; letter-spacing:0.1em;">${pin}</strong> — save it, you'll need it to log in.<br><a href="#" id="continueToLoginLink" style="color:var(--pink); font-weight:600;">Continue to login →</a>`
+          ? `Welcome, ${escapeHtml(name.split(' ')[0])}! Your PIN is <strong style="font-family:'JetBrains Mono',monospace; font-size:1.1em; letter-spacing:0.1em;">${escapeHtml(pin)}</strong> — save it, you'll need it to log in.<br><a href="#" id="continueToLoginLink" style="color:var(--pink); font-weight:600;">Continue to login →</a>`
           : 'Registered! Ask your teacher for your PIN.';
         document.getElementById('regName').value = '';
         document.getElementById('regRole').value = '';
@@ -279,7 +283,7 @@
         const pin = data && data[0] ? data[0].assigned_pin : null;
         resetMsg.style.color = '#16a34a';
         resetMsg.innerHTML = pin
-          ? `Your new PIN is <strong style="font-family:'JetBrains Mono',monospace; font-size:1.1em; letter-spacing:0.1em;">${pin}</strong>.<br><a href="#" id="continueToLoginFromResetLink" style="color:var(--pink); font-weight:600;">Continue to login →</a>`
+          ? `Your new PIN is <strong style="font-family:'JetBrains Mono',monospace; font-size:1.1em; letter-spacing:0.1em;">${escapeHtml(pin)}</strong>.<br><a href="#" id="continueToLoginFromResetLink" style="color:var(--pink); font-weight:600;">Continue to login →</a>`
           : 'Something went wrong. Please try again.';
         document.getElementById('resetName').value = '';
         document.getElementById('resetRecovery').value = '';

@@ -206,9 +206,9 @@
         return `
           <div class="podium-item ${cls}">
             <div class="medal">${medals[i]}</div>
-            <div class="podium-avatar">${s.name.charAt(0).toUpperCase()}</div>
-            <div class="podium-name">${s.name}</div>
-            <div class="podium-xp">${s.total_xp} XP</div>
+            <div class="podium-avatar">${escapeHtml(s.name.charAt(0).toUpperCase())}</div>
+            <div class="podium-name">${escapeHtml(s.name)}</div>
+            <div class="podium-xp">${Number(s.total_xp) || 0} XP</div>
           </div>
         `;
       }).join('');
@@ -217,9 +217,9 @@
       document.getElementById('leaderboardBody').innerHTML = students.map((s, i) => `
         <tr>
           <td class="rank-cell">${i + 1}</td>
-          <td>${s.name}</td>
-          <td><span class="tier-tag">${s.tier_level}</span></td>
-          <td style="text-align:right; font-weight:700;">${s.total_xp}</td>
+          <td>${escapeHtml(s.name)}</td>
+          <td><span class="tier-tag">${escapeHtml(s.tier_level)}</span></td>
+          <td style="text-align:right; font-weight:700;">${Number(s.total_xp) || 0}</td>
         </tr>
       `).join('');
     }
@@ -282,10 +282,10 @@
       feed.innerHTML = subs.map(s => `
         <div class="feed-item">
           <div>
-            <div class="feed-name">${nameById[s.student_id] || 'Student'}</div>
-            <div class="feed-quest">${s.quests?.title || s.quest_id}</div>
+            <div class="feed-name">${escapeHtml(nameById[s.student_id] || 'Student')}</div>
+            <div class="feed-quest">${escapeHtml(s.quests?.title || s.quest_id)}</div>
           </div>
-          <div class="feed-xp">+${s.xp_awarded} XP</div>
+          <div class="feed-xp">+${Number(s.xp_awarded) || 0} XP</div>
         </div>
       `).join('');
     }
@@ -343,10 +343,21 @@
       banner.classList.remove('hidden');
     }
 
+    // Escapes text for both element content and quoted attribute values.
     function escapeHtml(str) {
-      const div = document.createElement('div');
-      div.textContent = str ?? '';
-      return div.innerHTML;
+      return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    // Returns the URL only if it is http(s); blocks javascript:, data:, etc.
+    function safeUrl(str) {
+      try {
+        const u = new URL(String(str ?? '').trim());
+        return u.protocol === 'http:' || u.protocol === 'https:' ? u.href : '';
+      } catch (e) { return ''; }
+    }
+
+    function storageUrl(path) {
+      return `${SUPABASE_URL}/storage/v1/object/public/submissions/${encodeURIComponent(path)}`;
     }
 
     let __featuredWorks = [];
@@ -390,12 +401,15 @@
       const w = __featuredWorks[__featuredIndex];
       let visual;
       if (w.filePath) {
-        const url = `${SUPABASE_URL}/storage/v1/object/public/submissions/${w.filePath}`;
+        const url = escapeHtml(storageUrl(w.filePath));
         visual = w.fileType === 'image'
           ? `<img src="${url}" alt="Approved work">`
-          : `<a href="${url}" target="_blank" class="file-tile">📄<span>View PDF</span></a>`;
+          : `<a href="${url}" target="_blank" rel="noopener noreferrer" class="file-tile">📄<span>View PDF</span></a>`;
       } else {
-        visual = `<a href="${escapeHtml(w.link)}" target="_blank" class="file-tile">🔗<span>View Submission</span></a>`;
+        const link = safeUrl(w.link);
+        visual = link
+          ? `<a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer" class="file-tile">🔗<span>View Submission</span></a>`
+          : `<div class="file-tile">📝<span>Text submission</span></div>`;
       }
 
       const dots = __featuredWorks.length > 1
@@ -409,7 +423,7 @@
             <div class="featured-who">${escapeHtml(w.name)}</div>
             <div class="featured-quest">${escapeHtml(w.quest)}</div>
           </div>
-          <div class="featured-xp">+${w.xp} XP</div>
+          <div class="featured-xp">+${Number(w.xp) || 0} XP</div>
         </div>
         ${dots}
       `;
