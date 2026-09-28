@@ -3,374 +3,430 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cindrebay AI Campus — Admin Terminal</title>
+  <title>Cindrebay AI Campus — Teacher Console</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..600&family=Inter:wght@400..800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="theme.css">
   <style>
-    :root {
-      --blue: #B74094; --pink: #B74094; --pink-dark: #8f3175; --green: #16a34a; --red: #dc2626; --gray: #6b7280;
-      --gray-light: #f3f4f6; --amber: #b45309; --amber-bg: #fef3c7;
-    }
-    * { box-sizing: border-box; }
-    body { font-family: 'Inter', sans-serif; margin: 0; background: #f8fafc; color: #1f2937; }
+    body { background: var(--paper); }
 
-    /* ---- Login gate ---- */
+    /* ---------- Login gate ---------- */
     #loginGate {
-      min-height: 100vh; display: flex; align-items: center; justify-content: center;
-      background: linear-gradient(160deg, #8f3175, #B74094);
+      min-height: 100vh; display: none; align-items: center; justify-content: center; padding: 1.25rem; position: relative; overflow: hidden;
+      background:
+        radial-gradient(60% 60% at 10% 10%, #c24a9f 0%, transparent 60%),
+        radial-gradient(60% 60% at 90% 90%, #5a1d4a 0%, transparent 60%),
+        linear-gradient(155deg, #9a3580 0%, #6b2457 55%, #3f1434 100%);
     }
-    #loginGate .card {
-      background: white; border-radius: 14px; padding: 2rem; width: 90%; max-width: 360px;
-    }
-    #loginGate h1 { font-size: 1.2rem; margin: 0 0 1.25rem; }
-    #loginGate input {
-      width: 100%; border: 1.5px solid var(--gray-light); border-radius: 8px;
-      padding: 0.7rem; font-size: 1rem; margin-bottom: 0.75rem;
-    }
-    #loginGate button {
-      width: 100%; background: var(--blue); color: white; border: none; border-radius: 8px;
-      padding: 0.75rem; font-weight: 600; cursor: pointer; font-size: 0.95rem;
-    }
-    #gateMsg { color: var(--red); font-size: 0.85rem; margin-top: 0.5rem; min-height: 1.2em; }
+    #loginGate::after { content: ''; position: absolute; inset: 0; background-image: var(--grain); opacity: 0.14; mix-blend-mode: overlay; pointer-events: none; }
+    #loginGate .card { position: relative; z-index: 1; width: 100%; max-width: 400px; padding: 2rem; border-radius: var(--r-xl); box-shadow: 0 40px 90px -30px rgb(20 4 16 / 0.7); }
+    #loginGate .logo-plate { display: flex; width: fit-content; box-shadow: none; padding: 0; margin-bottom: 1.4rem; }
+    #loginGate .eyebrow { display: block; }
+    #loginGate h1 { font-size: 2.1rem; margin: 0.35rem 0 0.4rem; }
+    #loginGate p { color: var(--ink-500); margin: 0 0 1.3rem; font-size: 0.92rem; }
+    #gateMsg { color: var(--danger-600); font-size: 0.86rem; margin-top: 0.7rem; min-height: 1.2em; }
+    .gate-links { margin-top: 1.3rem; display: flex; justify-content: center; gap: 1rem; font-size: 0.8rem; }
+    .gate-links a { color: var(--ink-500); font-weight: 600; text-decoration: none; }
+    .gate-links a:hover { color: var(--brand-600); }
 
-    /* ---- Main app ---- */
+    /* ---------- Shell ---------- */
     #app { display: none; }
-    header {
-      background: var(--blue); color: white; padding: 1rem 1.5rem;
-      display: flex; justify-content: space-between; align-items: center;
+    .shell { display: grid; grid-template-columns: 250px minmax(0, 1fr); min-height: 100vh; }
+    .side {
+      position: sticky; top: 0; height: 100vh; overflow-y: auto; padding: 1.2rem 0.9rem; display: flex; flex-direction: column; gap: 1.2rem;
+      color: #fbe9f4; background: radial-gradient(90% 50% at 0% 0%, #6b2457 0%, transparent 70%), linear-gradient(180deg, #2c0d24, #1b0716);
     }
-    header h1 { font-size: 1.1rem; margin: 0; }
-    header button {
-      background: rgba(255,255,255,0.15); border: none; color: white;
-      padding: 6px 14px; border-radius: 100px; cursor: pointer; font-size: 0.8rem;
+    .side .logo-plate { align-self: flex-start; }
+    .side .logo-plate img { height: 24px; }
+    .side-title { font-family: var(--font-display); font-size: 1.35rem; font-weight: 560; letter-spacing: -0.01em; padding: 0 0.4rem; }
+    .side-title small { display: block; font-family: var(--font-ui); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #e9a8d1; margin-bottom: 0.15rem; }
+    .nav { display: flex; flex-direction: column; gap: 2px; }
+    .nav a {
+      display: flex; align-items: center; gap: 0.65rem; padding: 0.55rem 0.7rem; border-radius: 10px; color: rgb(251 233 244 / 0.72);
+      text-decoration: none; font-size: 0.88rem; font-weight: 600; transition: background-color 0.15s, color 0.15s;
     }
-    main { max-width: 1000px; margin: 0 auto; padding: 1.5rem; }
-    section { margin-bottom: 2rem; }
-    section h2 { font-size: 1.05rem; margin: 0 0 0.75rem; }
+    .nav a:hover { background: rgb(255 255 255 / 0.06); color: #fff; }
+    .nav a.active { background: rgb(255 255 255 / 0.1); color: #fff; box-shadow: inset 3px 0 0 #f08ccb; }
+    .nav .ni { width: 1.3rem; text-align: center; opacity: 0.9; }
+    .nav .badge-count { margin-left: auto; min-width: 1.5rem; height: 1.3rem; padding: 0 0.4rem; border-radius: 99px; background: #f08ccb; color: #3a0f2e; font-family: var(--font-mono); font-size: 0.72rem; font-weight: 700; display: grid; place-items: center; }
+    .nav .badge-count:empty, .nav .badge-count[data-zero] { display: none; }
+    .side-foot { margin-top: auto; display: flex; flex-direction: column; gap: 0.4rem; }
+    .side-foot a, .side-foot button {
+      display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.55rem 0.7rem; border-radius: 10px; border: 1px solid rgb(255 255 255 / 0.12);
+      background: transparent; color: rgb(251 233 244 / 0.85); font-size: 0.82rem; font-weight: 600; text-decoration: none; cursor: pointer;
+    }
+    .side-foot a:hover, .side-foot button:hover { background: rgb(255 255 255 / 0.07); color: #fff; }
 
-    .card-list { display: grid; gap: 0.6rem; }
+    main { padding: 1.6rem clamp(1rem, 2.5vw, 2.4rem) 4rem; max-width: 1180px; width: 100%; }
+    .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
+    .page-head h1 { font-size: clamp(1.9rem, 3vw, 2.6rem); margin: 0.2rem 0 0; }
+    .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem; margin-bottom: 1.6rem; }
+    .kpi { padding: 1rem 1.1rem; position: relative; overflow: hidden; }
+    .kpi .label { font-size: 0.76rem; font-weight: 650; color: var(--ink-500); display: flex; align-items: center; gap: 0.4rem; }
+    .kpi b { display: block; font-family: var(--font-mono); font-size: 1.9rem; line-height: 1.1; margin-top: 0.35rem; letter-spacing: -0.03em; }
+    .kpi small { color: var(--ink-400); font-size: 0.76rem; }
+    .kpi.hot { background: var(--grad-brand); color: #fff; border-color: transparent; box-shadow: var(--shadow-brand); }
+    .kpi.hot .label, .kpi.hot small { color: rgb(255 255 255 / 0.8); }
+
+    section.block { margin-bottom: 1.6rem; scroll-margin-top: 1rem; }
+    .block-h { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.8rem; }
+    .block-h h2 { margin: 0; font-family: var(--font-display); font-weight: 560; font-size: 1.5rem; letter-spacing: -0.015em; }
+    .block-h p { margin: 0.15rem 0 0; color: var(--ink-500); font-size: 0.86rem; }
+    .panel-card { padding: 1.1rem 1.2rem; }
+    .two-col { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.9rem; }
+    .panel-card h3 { margin: 0 0 0.25rem; font-size: 1rem; }
+    .panel-card .hint { font-size: 0.8rem; color: var(--ink-500); margin: 0 0 0.8rem; }
+
+    /* ---------- Rows ---------- */
+    .card-list { display: grid; gap: 0.55rem; }
     .row-card {
-      background: white; border-radius: 10px; padding: 0.9rem 1.1rem;
-      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
-      box-shadow: 0 1px 3px rgb(0 0 0 / 0.05); flex-wrap: wrap;
+      background: var(--white); border: 1px solid var(--line); border-radius: var(--r-md); padding: 0.8rem 0.95rem;
+      display: flex; align-items: center; gap: 0.9rem; box-shadow: var(--shadow-xs); flex-wrap: wrap; transition: box-shadow 0.15s, border-color 0.15s;
     }
+    .row-card:hover { border-color: var(--line-strong); }
     .row-main { flex: 1; min-width: 200px; }
-    .row-title { font-weight: 600; font-size: 0.95rem; }
-    .row-sub { font-size: 0.8rem; color: var(--gray); margin-top: 2px; }
-    .tag { font-size: 0.7rem; font-weight: 700; padding: 3px 9px; border-radius: 100px; text-transform: uppercase; }
-    .tag.active { background: #dcfce7; color: var(--green); }
-    .tag.inactive { background: var(--gray-light); color: var(--gray); }
-    .tag.pending { background: var(--amber-bg); color: var(--amber); }
-    .tag.approved { background: #dcfce7; color: var(--green); }
-    .tag.iteration { background: #fee2e2; color: var(--red); }
-    .row-actions { display: flex; gap: 0.5rem; align-items: center; }
-    .btn {
-      border: none; border-radius: 6px; padding: 6px 12px; font-size: 0.8rem;
-      font-weight: 600; cursor: pointer;
-    }
-    .btn-primary { background: var(--blue); color: white; }
-    .btn-green { background: var(--green); color: white; }
-    .btn-red { background: var(--red); color: white; }
-    .btn-ghost { background: var(--gray-light); color: #374151; }
-    .xp-input {
-      width: 55px; border: 1px solid var(--gray-light); border-radius: 6px;
-      padding: 5px; font-size: 0.85rem; text-align: center;
-    }
-    .link-preview { font-size: 0.8rem; color: var(--pink); word-break: break-all; }
-    .submission-thumb { max-width: 140px; max-height: 100px; border-radius: 6px; margin-top: 6px; display: block; border: 1px solid var(--gray-light); }
-    .pdf-link { display: inline-block; margin-top: 6px; font-size: 0.85rem; color: var(--pink); text-decoration: none; font-weight: 600; }
-    .pdf-link:hover { text-decoration: underline; }
-    .empty { color: var(--gray); font-size: 0.9rem; text-align: center; padding: 1.5rem 0; }
+    .row-title { font-weight: 650; font-size: 0.93rem; display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+    .row-sub { font-size: 0.8rem; color: var(--ink-500); margin-top: 2px; }
+    .row-actions { display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap; }
+    .av { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; flex: none; background: var(--brand-100); color: var(--brand-700); font-family: var(--font-display); font-weight: 600; }
+    .pin { font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700; color: var(--ink-700); background: var(--ink-100); padding: 0.1rem 0.45rem; border-radius: 6px; }
+    .xpv { font-family: var(--font-mono); font-weight: 700; }
+    .link-preview { font-size: 0.8rem; color: var(--brand-600); word-break: break-all; }
+    .link-preview a { color: inherit; }
+    .pdf-link { display: inline-flex; margin-top: 6px; font-size: 0.85rem; color: var(--brand-600); text-decoration: none; font-weight: 650; }
+    .submission-thumb { max-width: 140px; max-height: 100px; border-radius: 8px; margin-top: 6px; display: block; border: 1px solid var(--line); }
+    .row-card.inactive { opacity: 0.6; }
 
-    .fb-input {
-      width: 100%; margin-top: 8px; border: 1px solid var(--gray-light); border-radius: 6px;
-      padding: 7px 9px; font-size: 0.85rem; font-family: inherit;
+    /* ---------- Review queue ---------- */
+    .kb-hint { font-size: 0.78rem; color: var(--ink-500); display: flex; flex-wrap: wrap; gap: 0.35rem 0.8rem; align-items: center; }
+    kbd { background: var(--white); border: 1px solid var(--ink-300); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; font-size: 0.72rem; font-family: var(--font-mono); color: var(--ink-700); }
+    .bulk-bar { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin: 0.6rem 0 0.8rem; padding: 0.55rem 0.8rem; border-radius: var(--r-md); background: var(--white); border: 1px solid var(--line); }
+    .bulk-all { font-size: 0.85rem; color: var(--ink-700); display: flex; align-items: center; gap: 0.4rem; cursor: pointer; font-weight: 600; }
+    .bulk-status { font-size: 0.84rem; color: var(--ink-500); }
+    .sel-check { width: 16px; height: 16px; accent-color: var(--brand-500); margin: 0; }
+    .sub-card { align-items: stretch; padding: 0.9rem; gap: 1rem; }
+    .sub-media {
+      width: 168px; height: 126px; flex: none; border-radius: 12px; overflow: hidden; background: var(--brand-50);
+      display: grid; place-items: center; text-decoration: none; color: var(--brand-600); font-size: 1.8rem; text-align: center;
     }
-    .fb-input:focus { outline: none; border-color: var(--blue); }
-    .kb-hint { font-size: 0.78rem; color: var(--gray); margin: -0.4rem 0 0.75rem; }
-    kbd {
-      background: var(--gray-light); border: 1px solid #d1d5db; border-bottom-width: 2px; border-radius: 4px;
-      padding: 0 5px; font-size: 0.72rem; font-family: ui-monospace, monospace; color: #374151;
-    }
-    .row-card.kb-selected { outline: 2px solid var(--blue); outline-offset: 2px; }
-    .manage-input {
-      width: 100%; border: 1px solid var(--gray-light); border-radius: 8px; padding: 9px 11px; font-size: 0.9rem;
-      font-family: inherit; box-sizing: border-box; background: white;
-    }
-    .manage-input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(183, 64, 148, 0.12); }
-    .manage-input[readonly] { background: var(--gray-light); color: var(--gray); }
-    .manage-form { background: white; border-radius: 10px; padding: 0.8rem 1rem; margin-top: 0.75rem; box-shadow: 0 1px 3px rgb(0 0 0 / 0.05); }
-    .manage-form > summary { cursor: pointer; font-weight: 600; font-size: 0.9rem; color: #374151; }
-    .manage-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0.6rem; margin-top: 0.75rem; }
-    .manage-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 0.72rem; font-weight: 600; color: var(--gray); text-transform: uppercase; letter-spacing: 0.03em; }
-    .hidden { display: none !important; }
-    .bulk-bar { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
-    .bulk-all { font-size: 0.85rem; color: #374151; display: flex; align-items: center; gap: 0.35rem; cursor: pointer; }
-    .bulk-status { font-size: 0.85rem; color: var(--gray); }
-    .sel-check { margin-right: 0.35rem; vertical-align: middle; }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .sub-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .sub-media small { display: block; font-size: 0.72rem; font-weight: 650; margin-top: 0.2rem; }
+    .sub-tags { display: flex; gap: 0.35rem; flex-wrap: wrap; margin: 0.35rem 0; }
+    .sub-text { font-size: 0.84rem; color: var(--ink-700); background: var(--ink-100); border-radius: 10px; padding: 0.45rem 0.65rem; margin: 0.25rem 0; word-break: break-word; }
+    .fb-input { margin-top: 0.5rem; min-height: 38px; font-size: 0.86rem; }
+    .fb-chips { display: flex; gap: 0.3rem; flex-wrap: wrap; margin-top: 0.45rem; }
+    .fb-chips .chip { min-height: 26px; font-size: 0.72rem; padding: 0 0.6rem; }
+    .sub-actions { flex-direction: column; align-items: stretch; justify-content: center; gap: 0.45rem; min-width: 150px; }
+    .xp-field { display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; font-size: 0.76rem; font-weight: 650; color: var(--ink-500); }
+    .xp-input { width: 72px; min-height: 34px; text-align: center; font-family: var(--font-mono); font-weight: 700; padding: 0.3rem; }
+    .row-card.kb-selected { border-color: var(--brand-400); box-shadow: var(--ring), var(--shadow-sm); }
 
-    .modal-backdrop {
-      position: fixed; inset: 0; background: rgba(17, 24, 39, 0.6); z-index: 10000;
-      display: flex; align-items: flex-start; justify-content: center; padding: 1.5rem 1rem; overflow-y: auto;
-    }
-    .modal-card {
-      position: relative; background: white; border-radius: 14px; padding: 1.5rem; width: 100%; max-width: 640px;
-      box-shadow: 0 20px 50px -12px rgb(0 0 0 / 0.4);
-    }
-    .modal-close {
-      position: absolute; top: 10px; right: 10px; width: 32px; height: 32px; border-radius: 50%;
-      border: none; background: var(--gray-light); cursor: pointer; font-size: 0.95rem;
-    }
-    .detail-name { margin: 0 0 4px; font-size: 1.15rem; padding-right: 2rem; }
-    .detail-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 0.5rem; margin: 1rem 0; }
-    .detail-stats div { background: #f8fafc; border-radius: 10px; padding: 0.6rem; text-align: center; }
-    .detail-stats strong { display: block; font-size: 1rem; }
-    .detail-stats span { font-size: 0.7rem; color: var(--gray); }
-    .detail-h { margin: 1rem 0 0.5rem; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--gray); }
-    .detail-badge { display: inline-block; background: #fef3c7; color: var(--amber); border-radius: 100px; padding: 3px 10px; font-size: 0.75rem; font-weight: 600; margin: 0 0.3rem 0.3rem 0; }
-    .detail-item { border: 1px solid var(--gray-light); border-radius: 10px; padding: 0.7rem 0.9rem; margin-bottom: 0.5rem; }
-    .xp-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.35rem 0; border-bottom: 1px solid var(--gray-light); font-size: 0.85rem; }
+    /* ---------- Controls ---------- */
+    .timer-controls, .bulk-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+    .timer-controls .input { flex: 1; min-width: 150px; }
+    .presets { display: flex; gap: 0.35rem; flex-wrap: wrap; margin: 0.6rem 0; }
+    #timerStatus { font-size: 0.85rem; color: var(--ink-500); margin-top: 0.6rem; display: flex; align-items: center; gap: 0.5rem; }
+    #timerStatus.running { color: var(--brand-700); font-weight: 650; }
+    .manage-form { margin-top: 0.8rem; background: var(--white); border: 1px solid var(--line); border-radius: var(--r-md); padding: 0.75rem 1rem; }
+    .manage-form > summary { cursor: pointer; font-weight: 650; font-size: 0.9rem; color: var(--ink-700); list-style: none; display: flex; align-items: center; gap: 0.5rem; }
+    .manage-form > summary::before { content: '+'; width: 22px; height: 22px; border-radius: 6px; background: var(--brand-100); color: var(--brand-700); display: grid; place-items: center; font-weight: 800; }
+    .manage-form[open] > summary::before { content: '–'; }
+    .manage-form > summary::-webkit-details-marker { display: none; }
+    .manage-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0.7rem; margin-top: 0.85rem; }
+    .manage-grid label { display: flex; flex-direction: column; gap: 5px; font-size: 0.74rem; font-weight: 650; color: var(--ink-600); }
+    .toolbar { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.7rem; }
+    .toolbar .input { flex: 1; min-width: 220px; }
+    #studentFilterChips .btn-primary { box-shadow: none; }
+    .signups { display: flex; gap: 0.45rem; flex-wrap: wrap; margin-top: 0.8rem; }
+    #pendingRegList { display: flex; gap: 0.45rem; flex-wrap: wrap; }
+    #pendingRegList .row-card { padding: 0.35rem 0.6rem 0.35rem 0.35rem; gap: 0.5rem; border-radius: 99px; flex-wrap: nowrap; }
+    #pendingRegList .row-main { min-width: 0; }
+    #pendingRegList .av { width: 28px; height: 28px; font-size: 0.85rem; }
+    #pendingRegList .row-title { font-size: 0.82rem; }
+    #pendingRegList .row-sub { font-size: 0.72rem; margin: 0; }
+    #pendingRegList .tag { display: none; }
+
+    /* ---------- Analytics ---------- */
+    .analytics-card { padding: 1.1rem 1.25rem; }
+    .analytics-card h4 { margin: 0 0 0.9rem; font-size: 0.92rem; font-weight: 700; color: var(--ink-700); }
+    .chart-row { display: grid; grid-template-columns: minmax(0, 170px) minmax(0, 1fr) 36px; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; }
+    .chart-row:last-child { margin-bottom: 0; }
+    .chart-label { font-size: 0.8rem; color: var(--ink-700); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .chart-track { background: var(--ink-100); border-radius: 99px; height: 14px; overflow: hidden; }
+    .chart-fill { background: var(--brand-500); height: 100%; border-radius: 0 99px 99px 0; transition: width 0.6s var(--ease-out); min-width: 2px; }
+    .chart-value { font-family: var(--font-mono); font-size: 0.82rem; font-weight: 700; color: var(--ink-900); }
+
+    /* ---------- Student detail modal ---------- */
+    .detail-name { margin: 0 0 4px; font-family: var(--font-display); font-weight: 560; font-size: 1.7rem; padding-right: 2.4rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .detail-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 0.5rem; margin: 1rem 0; }
+    .detail-stats div { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 0.65rem; text-align: center; }
+    .detail-stats strong { display: block; font-family: var(--font-mono); font-size: 1rem; }
+    .detail-stats span { font-size: 0.7rem; color: var(--ink-500); }
+    .detail-h { margin: 1.2rem 0 0.5rem; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-500); }
+    .detail-badge { display: inline-flex; align-items: center; gap: 0.3rem; background: var(--gold-100); color: var(--gold-700); border-radius: 99px; padding: 0.25rem 0.7rem; font-size: 0.76rem; font-weight: 650; margin: 0 0.3rem 0.3rem 0; }
+    .detail-item { border: 1px solid var(--line); border-radius: 12px; padding: 0.75rem 0.9rem; margin-bottom: 0.5rem; }
+    .detail-item-top { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .xp-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.45rem 0; border-bottom: 1px solid var(--line); font-size: 0.85rem; }
     .xp-row .xp-what { flex: 1; }
     .xp-row.undone { opacity: 0.5; text-decoration: line-through; }
-    .xp-delta { font-weight: 700; min-width: 3.2rem; }
-    .xp-delta.plus { color: var(--green); }
-    .xp-delta.minus { color: var(--red); }
-    .detail-item-top { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-    .fb-chips { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 6px; }
-    .chip {
-      border: 1px solid var(--gray-light); background: white; color: #374151; border-radius: 100px;
-      padding: 3px 10px; font-size: 0.72rem; cursor: pointer; font-family: inherit;
-    }
-    .chip:hover { border-color: var(--blue); color: var(--blue); }
+    .xp-delta { font-family: var(--font-mono); font-weight: 700; min-width: 3.2rem; }
+    .xp-delta.plus { color: var(--success-700); }
+    .xp-delta.minus { color: var(--danger-600); }
 
-    .add-student-form {
-      background: white; border-radius: 10px; padding: 1rem; display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-end;
+    @media (max-width: 1080px) {
+      .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .two-col { grid-template-columns: 1fr; }
     }
-    .add-student-form .field {
-      flex: 1; min-width: 140px; display: flex; flex-direction: column; gap: 4px;
+    @media (max-width: 860px) {
+      .shell { grid-template-columns: 1fr; }
+      .side { position: sticky; top: 0; z-index: 60; height: auto; flex-direction: row; align-items: center; padding: 0.6rem 0.8rem; gap: 0.6rem; overflow-x: auto; }
+      .side .logo-plate, .side-title { display: none; }
+      .nav { flex-direction: row; }
+      .nav a { white-space: nowrap; padding: 0.45rem 0.6rem; }
+      .nav a.active { box-shadow: inset 0 -2px 0 #f08ccb; }
+      .side-foot { margin: 0 0 0 auto; flex-direction: row; }
+      .side-foot a { display: none; }
+      main { padding-top: 1.1rem; }
+      .sub-card { flex-direction: column; }
+      .sub-media { width: 100%; height: 190px; }
+      .sub-actions { flex-direction: row; flex-wrap: wrap; min-width: 0; }
+      .chart-row { grid-template-columns: minmax(0, 110px) minmax(0, 1fr) 32px; }
+      #sec-review > .kb-hint { display: none; }
     }
-    .add-student-form .field.field-pin { flex: 0 0 110px; min-width: 110px; }
-    .add-student-form label {
-      font-size: 0.75rem; font-weight: 600; color: var(--gray); text-transform: uppercase; letter-spacing: 0.03em;
-    }
-    .add-student-form input {
-      border: 1px solid var(--gray-light); border-radius: 6px; padding: 8px; font-size: 0.95rem;
-    }
-    .add-student-form input:focus {
-      outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(29,78,216,0.12);
-    }
-    .add-student-form button { align-self: flex-end; height: 38px; }
-
-    .timer-controls { display: flex; gap: 0.6rem; flex-wrap: wrap; }
-    .timer-controls input {
-      border: 1px solid var(--gray-light); border-radius: 6px; padding: 8px; font-size: 0.9rem; flex: 1; min-width: 140px;
-    }
-    .bulk-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-
-    .analytics-card {
-      background: white; border-radius: 10px; padding: 1.1rem 1.25rem;
-      box-shadow: 0 1px 3px rgb(0 0 0 / 0.05); margin-bottom: 0.75rem;
-    }
-    .analytics-card h4 { margin: 0 0 0.9rem; font-size: 0.9rem; font-weight: 700; color: #374151; }
-    .chart-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.55rem; }
-    .chart-row:last-child { margin-bottom: 0; }
-    .chart-label {
-      flex: 0 0 150px; font-size: 0.8rem; color: #374151; text-align: right;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .chart-track { flex: 1; background: var(--gray-light); border-radius: 100px; height: 16px; overflow: hidden; }
-    .chart-fill { background: var(--blue); height: 100%; border-radius: 100px; transition: width 0.5s ease; }
-    .chart-value { flex: 0 0 32px; font-size: 0.8rem; font-weight: 700; color: #374151; }
   </style>
 </head>
 <body>
 
   <div id="loginGate">
-    <div class="card">
-      <h1>🔑 Teacher Login</h1>
-      <input type="password" id="teacherKeyInput" placeholder="Teacher key">
-      <button id="gateBtn">Enter Admin Terminal</button>
-      <div id="gateMsg"></div>
-    </div>
+    <form class="card" id="gateForm" onsubmit="return false">
+      <span class="logo-plate"><img src="logo.svg" alt="Cindrebay School of Design"></span>
+      <span class="eyebrow">Teacher console</span>
+      <h1 class="display">Welcome, teacher</h1>
+      <p>Enter the teacher key to review work, run the class timer and manage students.</p>
+      <label class="field"><span>Teacher key</span><input type="password" id="teacherKeyInput" class="input" autocomplete="current-password" placeholder="••••••••"></label>
+      <button type="submit" id="gateBtn" class="btn btn-primary btn-lg btn-block" style="margin-top:0.9rem;">Enter console</button>
+      <div id="gateMsg" role="alert"></div>
+      <div class="gate-links"><a href="index.html">Student login</a><a href="projector.html">Projector view</a></div>
+    </form>
   </div>
 
   <div id="app">
-    <header>
-      <h1>Cindrebay AI Campus — Admin Terminal</h1>
-      <button id="logoutBtn">Log out</button>
-    </header>
+    <div class="shell">
+      <aside class="side">
+        <span class="logo-plate"><img src="logo.svg" alt="Cindrebay School of Design"></span>
+        <div class="side-title"><small>AI Campus</small>Teacher console</div>
+        <nav class="nav" id="sideNav" aria-label="Sections">
+          <a href="#sec-review"><span class="ni">✓</span>Review<span class="badge-count" id="navPending"></span></a>
+          <a href="#sec-class"><span class="ni">⏱</span>Class controls</a>
+          <a href="#sec-students"><span class="ni">☺</span>Students</a>
+          <a href="#sec-quests"><span class="ni">◆</span>Quests</a>
+          <a href="#sec-badges"><span class="ni">🏅</span>Badges</a>
+          <a href="#sec-history"><span class="ni">↺</span>History</a>
+          <a href="#sec-attention"><span class="ni">!</span>Needs attention</a>
+          <a href="#sec-insights"><span class="ni">▤</span>Insights</a>
+          <a href="#sec-showcase"><span class="ni">★</span>Showcase</a>
+        </nav>
+        <div class="side-foot">
+          <a href="projector.html" target="_blank" rel="noopener">Open projector <span>↗</span></a>
+          <button id="logoutBtn" type="button">Log out <span>→</span></button>
+        </div>
+      </aside>
 
-    <main>
-      <section>
-        <h2>Recent Sign-Ups</h2>
-        <div class="card-list" id="pendingRegList"><p class="empty">Loading…</p></div>
-      </section>
-
-      <section>
-        <h2>Add Student</h2>
-        <div class="add-student-form">
-          <div class="field">
-            <label for="newName">Full name</label>
-            <input type="text" id="newName" placeholder="e.g. Rila Nafeesa">
+      <main>
+        <div class="page-head">
+          <div>
+            <span class="eyebrow" id="todayLabel">Today</span>
+            <h1 class="display" id="helloTitle">Good day, teacher</h1>
           </div>
-          <div class="field">
-            <label for="newRole">Studio role</label>
-            <input type="text" id="newRole" placeholder="e.g. Interior Designer">
+        </div>
+
+        <div class="kpis">
+          <div class="card kpi hot"><span class="label">Waiting for review</span><b id="kpiPending">–</b><small>submissions in the queue</small></div>
+          <div class="card kpi"><span class="label">Approved today</span><b id="kpiToday">–</b><small id="kpiTodayXp">XP awarded today</small></div>
+          <div class="card kpi"><span class="label">Active students</span><b id="kpiStudents">–</b><small id="kpiStudentsSub">in the class</small></div>
+          <div class="card kpi"><span class="label">Needs attention</span><b id="kpiAttention">–</b><small>no login for 3+ days</small></div>
+        </div>
+
+        <section class="block" id="sec-review">
+          <div class="block-h">
+            <div><h2>Review queue</h2><p>Approve to award XP and badges instantly — students see it within seconds.</p></div>
           </div>
-          <div class="field field-pin">
-            <label for="newPin">4-digit PIN</label>
-            <input type="text" id="newPin" placeholder="e.g. 7454" maxlength="4" inputmode="numeric" pattern="[0-9]*">
+          <div class="kb-hint">Keyboard: <span><kbd>J</kbd>/<kbd>K</kbd> move</span><span><kbd>A</kbd> approve</span><span><kbd>N</kbd> needs work</span><span><kbd>X</kbd> tick</span><span><kbd>F</kbd> feedback</span><span><kbd>Esc</kbd> leave box</span></div>
+          <div class="bulk-bar" id="bulkBar">
+            <label class="bulk-all"><input type="checkbox" id="bulkAll" class="sel-check"> Select all</label>
+            <button class="btn btn-success btn-sm" id="bulkApproveBtn" disabled>Approve selected (0)</button>
+            <span class="bulk-status" id="bulkStatus" role="status"></span>
           </div>
-          <button class="btn btn-primary" id="addStudentBtn">Add</button>
-        </div>
-        <div id="addStudentMsg" style="margin-top:0.5rem; font-size:0.85rem;"></div>
+          <div class="card-list" id="pendingList"><div class="skeleton" style="height:140px"></div></div>
+        </section>
 
-        <div style="margin-top:1.25rem;">
-          <label for="bulkImportInput" style="display:block; font-size:0.75rem; font-weight:600; color:var(--gray); text-transform:uppercase; letter-spacing:0.03em; margin-bottom:6px;">
-            Bulk import (one per line: <code>Full Name, Studio Role</code>)
-          </label>
-          <textarea id="bulkImportInput" rows="4" placeholder="Rila Nafeesa, Interior Designer&#10;Sayed Faseeh, AI Designer" style="width:100%; box-sizing:border-box; border:1px solid var(--gray-light); border-radius:8px; padding:10px 12px; font-size:0.9rem; font-family:inherit; resize:vertical;"></textarea>
-          <button class="btn btn-primary" id="bulkImportBtn" style="margin-top:0.5rem;">Import students</button>
-          <div id="bulkImportMsg" style="margin-top:0.5rem; font-size:0.85rem;"></div>
-        </div>
-      </section>
-
-      <section>
-        <h2>Live Timer</h2>
-        <div class="timer-controls">
-          <input type="text" id="timerLabelInput" placeholder="e.g. Q1.3 NIGHT_AND_DAY">
-          <input type="number" id="timerMinutesInput" placeholder="Minutes" min="1" style="max-width:100px;">
-          <button class="btn btn-primary" id="startTimerBtn">Start</button>
-          <button class="btn btn-red" id="stopTimerBtn">Stop</button>
-        </div>
-        <div id="timerStatus" style="margin-top:0.5rem; font-size:0.85rem; color:var(--gray);"></div>
-      </section>
-
-      <section>
-        <h2>Class Announcement</h2>
-        <p class="kb-hint" style="margin-top:0;">Shown at the top of every student's dashboard. Students can dismiss it; changing the text shows it to them again.</p>
-        <textarea id="announceInput" class="manage-input" rows="2" maxlength="300" placeholder="e.g. Tomorrow: bring your laptops and headphones!"></textarea>
-        <div class="bulk-actions" style="margin-top:0.5rem; align-items:center;">
-          <button class="btn btn-primary" id="announcePublishBtn">Publish</button>
-          <button class="btn btn-ghost" id="announceClearBtn">Clear</button>
-          <span id="announceStatus" class="bulk-status" role="status"></span>
-        </div>
-      </section>
-
-      <section>
-        <h2>Quest Control</h2>
-        <div class="bulk-actions">
-          <button class="btn btn-primary" id="activateDay1Btn">Activate all Day 1 (Q1.x)</button>
-          <button class="btn btn-primary" id="activateDay2Btn">Activate all Day 2 (Q2.x)</button>
-          <button class="btn btn-ghost" id="deactivateAllBtn">Deactivate all</button>
-        </div>
-        <details class="manage-form" id="questForm">
-          <summary id="questFormSummary">Add a quest</summary>
-          <div class="manage-grid">
-            <label>Quest ID<input type="text" id="qfId" class="manage-input" maxlength="20" placeholder="e.g. Q3.1"></label>
-            <label>Title<input type="text" id="qfTitle" class="manage-input" maxlength="120" placeholder="e.g. Golden Hour Living Room"></label>
-            <label>XP<input type="number" id="qfXp" class="manage-input" min="0" max="1000" value="25"></label>
-            <label>Required tool<input type="text" id="qfTool" class="manage-input" maxlength="80" placeholder="e.g. Midjourney (optional)"></label>
+        <section class="block" id="sec-class">
+          <div class="block-h"><div><h2>Class controls</h2><p>Shown live on every student dashboard and the projector.</p></div></div>
+          <div class="two-col">
+            <div class="card panel-card">
+              <h3>⏱ Live timer</h3>
+              <div class="timer-controls">
+                <input type="text" id="timerLabelInput" class="input" placeholder="e.g. Q1.3 Night and Day">
+                <input type="number" id="timerMinutesInput" class="input" placeholder="Minutes" min="1" style="max-width:110px; flex:none;">
+              </div>
+              <div class="presets" id="timerPresets">
+                <button type="button" class="chip" data-min="5">5 min</button>
+                <button type="button" class="chip" data-min="10">10 min</button>
+                <button type="button" class="chip" data-min="15">15 min</button>
+                <button type="button" class="chip" data-min="25">25 min</button>
+                <button type="button" class="chip" data-min="45">45 min</button>
+              </div>
+              <div class="bulk-actions">
+                <button class="btn btn-primary" id="startTimerBtn">Start timer</button>
+                <button class="btn btn-danger" id="stopTimerBtn">Stop</button>
+              </div>
+              <div id="timerStatus"></div>
+            </div>
+            <div class="card panel-card">
+              <h3>📢 Class announcement</h3>
+              <p class="hint">At the top of every dashboard and on the projector. Students can dismiss it; changing the text shows it again.</p>
+              <textarea id="announceInput" class="textarea" rows="2" maxlength="300" placeholder="e.g. Tomorrow: bring your laptops and headphones!" style="min-height:72px"></textarea>
+              <div class="bulk-actions" style="margin-top:0.6rem;">
+                <button class="btn btn-primary" id="announcePublishBtn">Publish</button>
+                <button class="btn btn-ghost" id="announceClearBtn">Clear</button>
+                <span id="announceStatus" class="bulk-status" role="status"></span>
+              </div>
+            </div>
           </div>
-          <div class="bulk-actions" style="margin-top:0.6rem; align-items:center;">
-            <button class="btn btn-primary" id="qfSave">Add quest</button>
-            <button class="btn btn-ghost hidden" id="qfCancel">Cancel editing</button>
-            <span id="qfMsg" class="bulk-status" role="status"></span>
+        </section>
+
+        <section class="block" id="sec-students">
+          <div class="block-h"><div><h2>Students</h2><p>Quick XP, PINs, details and access.</p></div></div>
+          <div class="toolbar">
+            <input type="text" id="studentSearch" class="input" placeholder="Search by name, role, or PIN…" aria-label="Search students">
+            <div class="bulk-actions" id="studentFilterChips">
+              <button class="btn btn-primary btn-sm" data-filter="all">All</button>
+              <button class="btn btn-ghost btn-sm" data-filter="active">Active</button>
+              <button class="btn btn-ghost btn-sm" data-filter="inactive">Inactive</button>
+            </div>
+            <button class="btn btn-ghost btn-sm" id="exportCsvBtn">Export CSV</button>
+            <button class="btn btn-ghost btn-sm" id="printPinCardsBtn">Print PIN cards</button>
           </div>
-          <p class="kb-hint" style="margin:0.5rem 0 0;">New quests start Inactive, so students cannot see them until you press Activate.</p>
-        </details>
-        <div class="card-list" id="questList" style="margin-top:0.75rem;"><p class="empty">Loading…</p></div>
-      </section>
+          <div class="card-list" id="studentList"><div class="skeleton" style="height:64px"></div></div>
+          <div id="studentPagination" style="display:flex; justify-content:center; align-items:center; gap:0.75rem; margin-top:0.75rem;"></div>
 
-      <section>
-        <h2>Badges</h2>
-        <details class="manage-form" id="badgeForm">
-          <summary id="badgeFormSummary">Add a badge</summary>
-          <div class="manage-grid">
-            <label>Badge ID<input type="text" id="bfId" class="manage-input" maxlength="30" placeholder="e.g. night_owl"></label>
-            <label>Title<input type="text" id="bfTitle" class="manage-input" maxlength="60" placeholder="e.g. Night Owl"></label>
-            <label>Icon (emoji)<input type="text" id="bfIcon" class="manage-input" maxlength="8" placeholder="🦉"></label>
-            <label>Sort order<input type="number" id="bfSort" class="manage-input" value="0"></label>
-            <label>Earned by completing<select id="bfQuest" class="manage-input"><option value="">No quest (display only)</option></select></label>
-            <label>Description<input type="text" id="bfDesc" class="manage-input" maxlength="200" placeholder="Shown when students hover the badge"></label>
+          <div class="signups"><span class="eyebrow olive" style="align-self:center; margin-right:0.3rem;">Newest</span><div id="pendingRegList"></div></div>
+
+          <details class="manage-form" id="addStudentsBox">
+            <summary>Add students</summary>
+            <div class="two-col" style="margin-top:0.85rem;">
+              <div>
+                <div class="manage-grid" style="margin-top:0">
+                  <label>Full name<input type="text" id="newName" class="input" placeholder="e.g. Rila Nafeesa"></label>
+                  <label>Studio role<input type="text" id="newRole" class="input" placeholder="e.g. Interior Designer"></label>
+                  <label>4-digit PIN<input type="text" id="newPin" class="input" placeholder="e.g. 7454" maxlength="4" inputmode="numeric" pattern="[0-9]*"></label>
+                </div>
+                <button class="btn btn-primary" id="addStudentBtn" style="margin-top:0.7rem;">Add student</button>
+                <div id="addStudentMsg" class="form-msg"></div>
+              </div>
+              <div>
+                <label class="field"><span>Bulk import — one per line: <code>Full Name, Studio Role</code></span>
+                  <textarea id="bulkImportInput" class="textarea" rows="4" placeholder="Rila Nafeesa, Interior Designer&#10;Sayed Faseeh, AI Designer"></textarea>
+                </label>
+                <button class="btn btn-primary" id="bulkImportBtn" style="margin-top:0.6rem;">Import students</button>
+                <div id="bulkImportMsg" class="form-msg"></div>
+              </div>
+            </div>
+          </details>
+        </section>
+
+        <section class="block" id="sec-quests">
+          <div class="block-h">
+            <div><h2>Quests</h2><p>Only Active quests appear to students.</p></div>
+            <div class="bulk-actions">
+              <button class="btn btn-soft btn-sm" id="activateDay1Btn">Activate Day 1 (Q1.x)</button>
+              <button class="btn btn-soft btn-sm" id="activateDay2Btn">Activate Day 2 (Q2.x)</button>
+              <button class="btn btn-ghost btn-sm" id="deactivateAllBtn">Deactivate all</button>
+            </div>
           </div>
-          <div class="bulk-actions" style="margin-top:0.6rem; align-items:center;">
-            <button class="btn btn-primary" id="bfSave">Add badge</button>
-            <button class="btn btn-ghost hidden" id="bfCancel">Cancel editing</button>
-            <span id="bfMsg" class="bulk-status" role="status"></span>
+          <div class="card-list" id="questList"><div class="skeleton" style="height:64px"></div></div>
+          <details class="manage-form" id="questForm">
+            <summary id="questFormSummary">Add a quest</summary>
+            <div class="manage-grid">
+              <label>Quest ID<input type="text" id="qfId" class="input" maxlength="20" placeholder="e.g. Q3.1"></label>
+              <label>Title<input type="text" id="qfTitle" class="input" maxlength="120" placeholder="e.g. Golden Hour Living Room"></label>
+              <label>XP<input type="number" id="qfXp" class="input" min="0" max="1000" value="25"></label>
+              <label>Required tool<input type="text" id="qfTool" class="input" maxlength="80" placeholder="e.g. Midjourney (optional)"></label>
+            </div>
+            <div class="bulk-actions" style="margin-top:0.7rem;">
+              <button class="btn btn-primary" id="qfSave">Add quest</button>
+              <button class="btn btn-ghost hidden" id="qfCancel">Cancel editing</button>
+              <span id="qfMsg" class="bulk-status" role="status"></span>
+            </div>
+            <p class="kb-hint" style="margin:0.6rem 0 0;">New quests start Inactive, so students cannot see them until you press Activate.</p>
+          </details>
+        </section>
+
+        <section class="block" id="sec-badges">
+          <div class="block-h"><div><h2>Badges</h2><p>Awarded automatically when the linked quest is approved.</p></div></div>
+          <div class="card-list" id="badgeAdminList"><div class="skeleton" style="height:64px"></div></div>
+          <details class="manage-form" id="badgeForm">
+            <summary id="badgeFormSummary">Add a badge</summary>
+            <div class="manage-grid">
+              <label>Badge ID<input type="text" id="bfId" class="input" maxlength="30" placeholder="e.g. night_owl"></label>
+              <label>Title<input type="text" id="bfTitle" class="input" maxlength="60" placeholder="e.g. Night Owl"></label>
+              <label>Icon (emoji)<input type="text" id="bfIcon" class="input" maxlength="8" placeholder="🦉"></label>
+              <label>Sort order<input type="number" id="bfSort" class="input" value="0"></label>
+              <label>Earned by completing<select id="bfQuest" class="select"><option value="">No quest (display only)</option></select></label>
+              <label>Description<input type="text" id="bfDesc" class="input" maxlength="200" placeholder="Shown when students hover the badge"></label>
+            </div>
+            <div class="bulk-actions" style="margin-top:0.7rem;">
+              <button class="btn btn-primary" id="bfSave">Add badge</button>
+              <button class="btn btn-ghost hidden" id="bfCancel">Cancel editing</button>
+              <span id="bfMsg" class="bulk-status" role="status"></span>
+            </div>
+          </details>
+        </section>
+
+        <section class="block" id="sec-history">
+          <div class="block-h"><div><h2>Reviewed submissions</h2><p>Undo sends a submission back to the queue and takes its XP back.</p></div></div>
+          <div class="card-list" id="reviewedList"><div class="skeleton" style="height:64px"></div></div>
+        </section>
+
+        <section class="block" id="sec-attention">
+          <div class="block-h">
+            <div><h2>Needs attention</h2><p>Active students who have not logged in recently.</p></div>
+            <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.85rem; color:var(--ink-500);">No login in
+              <select id="attentionDays" class="select" style="width:auto; min-height:34px;">
+                <option value="3" selected>3+ days</option>
+                <option value="7">7+ days</option>
+                <option value="14">14+ days</option>
+              </select>
+            </label>
           </div>
-        </details>
-        <div class="card-list" id="badgeAdminList" style="margin-top:0.75rem;"><p class="empty">Loading…</p></div>
-      </section>
+          <div class="card-list" id="attentionList"><div class="skeleton" style="height:64px"></div></div>
+        </section>
 
-      <section>
-        <h2>Pending Submissions</h2>
-        <p class="kb-hint">Keyboard: <kbd>J</kbd>/<kbd>K</kbd> move · <kbd>A</kbd> approve · <kbd>N</kbd> needs work · <kbd>X</kbd> tick for bulk · <kbd>F</kbd> write feedback · <kbd>Esc</kbd> leave the box</p>
-        <div class="bulk-bar" id="bulkBar">
-          <label class="bulk-all"><input type="checkbox" id="bulkAll"> Select all</label>
-          <button class="btn btn-green" id="bulkApproveBtn" disabled>Approve selected (0)</button>
-          <span class="bulk-status" id="bulkStatus" role="status"></span>
-        </div>
-        <div class="card-list" id="pendingList"><p class="empty">Loading…</p></div>
-      </section>
+        <section class="block" id="sec-insights">
+          <div class="block-h"><div><h2>Insights</h2><p>Bar length is the count; one colour, no ranking by hue.</p></div></div>
+          <div class="two-col">
+            <div class="card analytics-card">
+              <h4>Quest completion (approved submissions)</h4>
+              <div id="questChart"><p class="empty">Loading…</p></div>
+            </div>
+            <div class="card analytics-card">
+              <h4>Students by tier</h4>
+              <div id="tierChart"><p class="empty">Loading…</p></div>
+            </div>
+          </div>
+        </section>
 
-      <section>
-        <h2>Reviewed Submissions</h2>
-        <div class="card-list" id="reviewedList"><p class="empty">Loading…</p></div>
-      </section>
-
-      <section>
-        <h2>Needs Attention</h2>
-        <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.75rem; font-size:0.85rem; color:var(--gray);">
-          <label for="attentionDays">Active students with no login in</label>
-          <select id="attentionDays" style="border:1px solid var(--gray-light); border-radius:6px; padding:5px 8px; font-size:0.85rem;">
-            <option value="3" selected>3+ days</option>
-            <option value="7">7+ days</option>
-            <option value="14">14+ days</option>
-          </select>
-        </div>
-        <div class="card-list" id="attentionList"><p class="empty">Loading…</p></div>
-      </section>
-
-      <section>
-        <h2>Students &amp; Quick XP</h2>
-        <div style="display:flex; gap:0.5rem; margin-bottom:0.75rem; flex-wrap:wrap;">
-          <input type="text" id="studentSearch" placeholder="Search by name, role, or PIN…" style="flex:1; min-width:200px; border:1px solid var(--gray-light); border-radius:8px; padding:10px 12px; font-size:0.9rem; box-sizing:border-box;">
-          <button class="btn btn-ghost" id="exportCsvBtn">Export CSV</button>
-          <button class="btn btn-ghost" id="printPinCardsBtn">Print PIN cards</button>
-        </div>
-        <div class="bulk-actions" id="studentFilterChips" style="margin-bottom:0.75rem;">
-          <button class="btn btn-primary" data-filter="all">All</button>
-          <button class="btn btn-ghost" data-filter="active">Active</button>
-          <button class="btn btn-ghost" data-filter="inactive">Inactive</button>
-        </div>
-        <div class="card-list" id="studentList"><p class="empty">Loading…</p></div>
-        <div id="studentPagination" style="display:flex; justify-content:center; align-items:center; gap:0.75rem; margin-top:0.75rem;"></div>
-      </section>
-
-      <section>
-        <h2>Class Analytics</h2>
-        <div class="analytics-card">
-          <h4>Quest Completion (approved submissions)</h4>
-          <div id="questChart"><p class="empty">Loading…</p></div>
-        </div>
-        <div class="analytics-card">
-          <h4>Students by Tier</h4>
-          <div id="tierChart"><p class="empty">Loading…</p></div>
-        </div>
-      </section>
-
-      <section>
-        <h2>End-of-Course Showcase</h2>
-        <p style="color:var(--gray); font-size:0.85rem; margin:0 0 0.75rem;">
-          Downloads a standalone HTML page of all approved work, to share or archive once the course wraps up.
-        </p>
-        <button class="btn btn-primary" id="downloadShowcaseBtn">Download Showcase Page</button>
-        <div id="showcaseMsg" style="margin-top:0.5rem; font-size:0.85rem;"></div>
-      </section>
-    </main>
+        <section class="block" id="sec-showcase">
+          <div class="block-h"><div><h2>End-of-course showcase</h2><p>A standalone page of every approved piece, to share or archive.</p></div></div>
+          <div class="card panel-card" style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+            <button class="btn btn-dark" id="downloadShowcaseBtn">Download showcase page</button>
+            <div id="showcaseMsg" class="bulk-status"></div>
+          </div>
+        </section>
+      </main>
+    </div>
   </div>
 
   <script>
@@ -381,9 +437,41 @@
     let teacherKey = sessionStorage.getItem('cindrebay_teacher_key');
 
     // Student-controlled text (names, submission text, file paths) must be escaped before it reaches
-    // innerHTML on this page, because the teacher key lives in sessionStorage. See escapeHtml() below.
+    // innerHTML on this page, because the teacher key lives in sessionStorage.
+    function escapeHtml(str) {
+      return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
     function storageUrl(path) {
       return `${SUPABASE_URL}/storage/v1/object/public/submissions/${encodeURIComponent(path)}`;
+    }
+
+    function safeUrl(str) {
+      try {
+        const u = new URL(String(str ?? '').trim());
+        return u.protocol === 'http:' || u.protocol === 'https:' ? u.href : '';
+      } catch (e) { return ''; }
+    }
+
+    function initial(name) { return escapeHtml(String(name || '?').trim().charAt(0).toUpperCase() || '?'); }
+
+    function toast(text, kind) {
+      let stack = document.querySelector('.toast-stack');
+      if (!stack) { stack = document.createElement('div'); stack.className = 'toast-stack'; document.body.appendChild(stack); }
+      const t = document.createElement('div');
+      t.className = 'toast ' + (kind || 'ok');
+      t.setAttribute('role', kind === 'bad' ? 'alert' : 'status');
+      t.innerHTML = `<span class="toast-icon" aria-hidden="true">${kind === 'bad' ? '!' : '✓'}</span><span></span>`;
+      t.lastChild.textContent = text;
+      stack.appendChild(t);
+      setTimeout(() => { t.classList.add('leaving'); setTimeout(() => t.remove(), 260); }, kind === 'bad' ? 5200 : 2800);
+    }
+
+    // Runs an admin RPC and reports a failure in a toast instead of failing silently.
+    async function adminCall(name, params, failText) {
+      const { data, error } = await sb.rpc(name, params);
+      if (error) { toast(`${failText}: ${error.message}`, 'bad'); console.error(error); }
+      return { data, error };
     }
 
     async function tryEnter(key) {
@@ -400,28 +488,53 @@
         if (ok) { showApp(); return; }
       }
       document.getElementById('loginGate').style.display = 'flex';
+      try { document.getElementById('teacherKeyInput').focus(); } catch (e) { /* ignore */ }
     }
 
-    document.getElementById('gateBtn').addEventListener('click', async () => {
+    async function enterFromGate() {
       const key = document.getElementById('teacherKeyInput').value.trim();
       const msg = document.getElementById('gateMsg');
+      const btn = document.getElementById('gateBtn');
       if (!key) return;
+      btn.disabled = true;
       const ok = await tryEnter(key);
+      btn.disabled = false;
       if (ok) { showApp(); }
       else { msg.textContent = 'Incorrect teacher key.'; }
-    });
+    }
+    document.getElementById('gateBtn').addEventListener('click', (e) => { e.preventDefault(); enterFromGate(); });
+    document.getElementById('teacherKeyInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); enterFromGate(); } });
 
     document.getElementById('logoutBtn').addEventListener('click', () => {
       sessionStorage.removeItem('cindrebay_teacher_key');
       window.location.reload();
     });
 
+    let __appShown = false;
     function showApp() {
       document.getElementById('loginGate').style.display = 'none';
       document.getElementById('app').style.display = 'block';
+      if (__appShown) return;
+      __appShown = true;
+      const h = new Date().getHours();
+      document.getElementById('helloTitle').textContent = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+      document.getElementById('todayLabel').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
       refreshAll();
       loadAnnouncement(); // once: it is a text box the teacher edits, so it must not refresh under them
       setInterval(refreshAll, 8000);
+      setupScrollSpy();
+    }
+
+    function setupScrollSpy() {
+      const links = [...document.querySelectorAll('#sideNav a')];
+      if (!('IntersectionObserver' in window)) return;
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach(en => {
+          if (!en.isIntersecting) return;
+          links.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + en.target.id));
+        });
+      }, { rootMargin: '-20% 0px -70% 0px' });
+      links.forEach(a => { const el = document.querySelector(a.getAttribute('href')); if (el) io.observe(el); });
     }
 
     async function refreshAll() {
@@ -429,7 +542,26 @@
       renderRecentSignups();
       renderStudentList();
       renderNeedsAttention();
-      await Promise.all([loadQuests(), loadPendingSubmissions(), loadReviewedSubmissions(), loadAnalytics(), loadBadgeAdmin()]);
+      await loadReviewedSubmissions(); // first: the queue uses it for attempt numbers
+      await Promise.all([loadQuests(), loadPendingSubmissions(), loadAnalytics(), loadBadgeAdmin()]);
+      renderKpis();
+    }
+
+    // ---------- KPIs ----------
+    let __pendingCount = 0;
+    let __attentionCount = 0;
+    function renderKpis() {
+      const active = __allStudents.filter(s => s.is_active).length;
+      document.getElementById('kpiStudents').textContent = String(active);
+      document.getElementById('kpiStudentsSub').textContent = `of ${__allStudents.length} on the roster`;
+      document.getElementById('kpiPending').textContent = String(__pendingCount);
+      const today = new Date().toDateString();
+      const todays = __reviewedCache.filter(s => s.status === 'Approved' && s.reviewed_at && new Date(s.reviewed_at).toDateString() === today);
+      document.getElementById('kpiToday').textContent = String(todays.length);
+      document.getElementById('kpiTodayXp').textContent = `${todays.reduce((n, s) => n + (Number(s.xp_awarded) || 0), 0)} XP awarded today`;
+      document.getElementById('kpiAttention').textContent = String(__attentionCount);
+      const nav = document.getElementById('navPending');
+      nav.textContent = __pendingCount ? String(__pendingCount) : '';
     }
 
     // ---------- Class announcement ----------
@@ -445,14 +577,14 @@
       status.style.color = '';
       status.textContent = 'Saving…';
       const { error } = await sb.rpc('set_announcement', { p_teacher_key: teacherKey, p_message: message });
-      if (error) { status.style.color = '#dc2626'; status.textContent = error.message; return; }
-      status.style.color = '#16a34a';
+      if (error) { status.style.color = 'var(--danger-600)'; status.textContent = error.message; return; }
+      status.style.color = 'var(--success-700)';
       status.textContent = message ? 'Published: students will see it within about 15 seconds.' : 'Cleared.';
+      toast(message ? 'Announcement published' : 'Announcement cleared');
     }
 
     document.getElementById('announcePublishBtn').addEventListener('click', () => {
       const message = document.getElementById('announceInput').value.trim();
-      if (!message) { saveAnnouncement(''); return; }
       saveAnnouncement(message);
     });
     document.getElementById('announceClearBtn').addEventListener('click', () => {
@@ -465,11 +597,8 @@
       return Math.floor((Date.now() - date.getTime()) / 86400000);
     }
 
-    function renderNeedsAttention() {
-      const box = document.getElementById('attentionList');
-      const threshold = parseInt(document.getElementById('attentionDays').value) || 3;
-
-      const rows = __allStudents
+    function attentionRows(threshold) {
+      return __allStudents
         .filter(s => s.is_active)
         .map(s => {
           // Count from the last login, or from when the student was added if they never logged in.
@@ -480,6 +609,13 @@
         })
         .filter(r => r.days !== null && r.days >= threshold)
         .sort((a, b) => b.days - a.days);
+    }
+
+    function renderNeedsAttention() {
+      const box = document.getElementById('attentionList');
+      const threshold = parseInt(document.getElementById('attentionDays').value) || 3;
+      const rows = attentionRows(threshold);
+      __attentionCount = attentionRows(3).length;
 
       if (rows.length === 0) {
         box.innerHTML = `<p class="empty">Everyone active has logged in within the last ${threshold} days. 🎉</p>`;
@@ -488,11 +624,12 @@
 
       box.innerHTML = rows.map(({ s, days, everLoggedIn }) => `
         <div class="row-card">
+          <span class="av" aria-hidden="true">${initial(s.name)}</span>
           <div class="row-main">
             <div class="row-title">${escapeHtml(s.name)}</div>
             <div class="row-sub">${escapeHtml(s.studio_role || 'No role given')} · ${Number(s.total_xp) || 0} XP · ${everLoggedIn ? `last login ${days} day${days === 1 ? '' : 's'} ago` : `never logged in (added ${days} day${days === 1 ? '' : 's'} ago)`}</div>
           </div>
-          <span class="tag pending">${everLoggedIn ? 'Inactive' : 'Never logged in'}</span>
+          <span class="tag pending">${everLoggedIn ? `${days}d away` : 'Never logged in'}</span>
         </div>
       `).join('');
     }
@@ -507,8 +644,8 @@
       }
       const max = Math.max(1, ...items.map(i => i.value));
       container.innerHTML = items.map(i => `
-        <div class="chart-row">
-          <div class="chart-label" title="${escapeHtml(i.label)}">${escapeHtml(i.label)}</div>
+        <div class="chart-row" title="${escapeHtml(i.label)}: ${i.value}">
+          <div class="chart-label">${escapeHtml(i.label)}</div>
           <div class="chart-track"><div class="chart-fill" style="width:${(i.value / max) * 100}%"></div></div>
           <div class="chart-value">${i.value}</div>
         </div>
@@ -532,7 +669,7 @@
       renderBarChart(document.getElementById('tierChart'), tierItems, 'No students yet.');
     }
 
-    // ---------- Students (fetched once via teacher-gated RPC, rendered into two panels) ----------
+    // ---------- Students (fetched once via teacher-gated RPC, rendered into several panels) ----------
     async function fetchAllStudents() {
       const { data, error } = await sb.rpc('admin_list_students', { p_teacher_key: teacherKey });
       if (error) { console.error(error); return; }
@@ -544,6 +681,7 @@
       renderRecentSignups();
       renderStudentList();
       renderNeedsAttention();
+      renderKpis();
     }
 
     function renderRecentSignups() {
@@ -553,15 +691,16 @@
 
       const list = document.getElementById('pendingRegList');
       if (!recent || recent.length === 0) {
-        list.innerHTML = '<p class="empty">No sign-ups yet.</p>';
+        list.innerHTML = '<span class="row-sub">No sign-ups yet.</span>';
         return;
       }
 
       list.innerHTML = recent.map(s => `
-        <div class="row-card">
+        <div class="row-card" title="${escapeHtml(s.studio_role || '')}">
+          <span class="av" aria-hidden="true">${initial(s.name)}</span>
           <div class="row-main">
             <div class="row-title">${escapeHtml(s.name)}</div>
-            <div class="row-sub">${escapeHtml(s.studio_role || 'No role given')} · PIN ${escapeHtml(s.pin_code || '—')}</div>
+            <div class="row-sub">PIN ${escapeHtml(s.pin_code || '—')}</div>
           </div>
           <span class="tag ${s.is_active ? 'active' : 'inactive'}">${s.is_active ? 'Active' : 'Deactivated'}</span>
         </div>
@@ -577,17 +716,17 @@
 
       list.innerHTML = quests.map(q => `
         <div class="row-card">
+          <span class="tag ${q.status === 'Active' ? 'active' : 'inactive'}"><span class="dot"></span>${escapeHtml(q.status)}</span>
           <div class="row-main">
-            <div class="row-title">${escapeHtml(q.quest_id)} · ${escapeHtml(q.title)}</div>
-            <div class="row-sub">${escapeHtml(q.required_tool || '')} · +${Number(q.points_xp) || 0} XP</div>
+            <div class="row-title"><span class="pin">${escapeHtml(q.quest_id)}</span> ${escapeHtml(q.title)}</div>
+            <div class="row-sub">${q.required_tool ? escapeHtml(q.required_tool) + ' · ' : ''}<span class="xpv">+${Number(q.points_xp) || 0} XP</span></div>
           </div>
-          <span class="tag ${q.status === 'Active' ? 'active' : 'inactive'}">${escapeHtml(q.status)}</span>
           <div class="row-actions">
-            <button class="btn ${q.status === 'Active' ? 'btn-ghost' : 'btn-primary'}" data-quest="${escapeHtml(q.quest_id)}" data-newstatus="${q.status === 'Active' ? 'Inactive' : 'Active'}">
+            <button class="btn btn-sm ${q.status === 'Active' ? 'btn-ghost' : 'btn-primary'}" data-quest="${escapeHtml(q.quest_id)}" data-newstatus="${q.status === 'Active' ? 'Inactive' : 'Active'}">
               ${q.status === 'Active' ? 'Deactivate' : 'Activate'}
             </button>
-            <button class="btn btn-ghost" data-quest-edit="${escapeHtml(q.quest_id)}">Edit</button>
-            <button class="btn btn-red" data-quest-delete="${escapeHtml(q.quest_id)}">Delete</button>
+            <button class="btn btn-ghost btn-sm" data-quest-edit="${escapeHtml(q.quest_id)}">Edit</button>
+            <button class="btn btn-danger btn-sm" data-quest-delete="${escapeHtml(q.quest_id)}">Delete</button>
           </div>
         </div>
       `).join('');
@@ -595,11 +734,12 @@
       list.querySelectorAll('button[data-quest]').forEach(btn => {
         btn.addEventListener('click', async () => {
           btn.disabled = true;
-          await sb.rpc('set_quest_status', {
+          const { error } = await adminCall('set_quest_status', {
             p_teacher_key: teacherKey,
             p_quest_id: btn.dataset.quest,
             p_status: btn.dataset.newstatus,
-          });
+          }, 'Could not change the quest');
+          if (!error) toast(`${btn.dataset.quest} is now ${btn.dataset.newstatus}`);
           loadQuests();
         });
       });
@@ -616,8 +756,8 @@
           const id = btn.dataset.questDelete;
           if (!confirm(`Delete quest ${id}? This cannot be undone.\n\n(Quests that already have submissions cannot be deleted; deactivate them instead.)`)) return;
           btn.disabled = true;
-          const { error } = await sb.rpc('admin_delete_quest', { p_teacher_key: teacherKey, p_quest_id: id });
-          if (error) alert(error.message);
+          const { error } = await adminCall('admin_delete_quest', { p_teacher_key: teacherKey, p_quest_id: id }, 'Could not delete the quest');
+          if (!error) toast(`Deleted ${id}`);
           loadQuests();
           loadBadgeAdmin();
         });
@@ -662,7 +802,7 @@
       const title = document.getElementById('qfTitle').value.trim();
       const xp = parseInt(document.getElementById('qfXp').value);
       const tool = document.getElementById('qfTool').value.trim();
-      msg.style.color = '#dc2626';
+      msg.style.color = 'var(--danger-600)';
       if (!/^[A-Za-z0-9._-]{1,20}$/.test(id)) { msg.textContent = 'Quest ID: 1-20 letters, numbers, dots, dashes or underscores.'; return; }
       if (!title) { msg.textContent = 'Enter a title.'; return; }
       if (isNaN(xp) || xp < 0 || xp > 1000) { msg.textContent = 'XP must be a number from 0 to 1000.'; return; }
@@ -680,7 +820,7 @@
 
       const wasEditing = !!__editingQuestId;
       resetQuestForm();
-      msg.style.color = '#16a34a';
+      msg.style.color = 'var(--success-700)';
       msg.textContent = wasEditing ? `Saved ${id}.` : `Added ${id}. It is Inactive: press Activate when students should see it.`;
       loadQuests();
       loadBadgeAdmin();
@@ -710,14 +850,15 @@
       if (__badgesCache.length === 0) { list.innerHTML = '<p class="empty">No badges yet.</p>'; return; }
       list.innerHTML = __badgesCache.map(b => `
         <div class="row-card">
+          <span class="av" style="background:var(--gold-100); font-size:1.1rem;" aria-hidden="true">${escapeHtml(b.icon)}</span>
           <div class="row-main">
-            <div class="row-title">${escapeHtml(b.icon)} ${escapeHtml(b.title)}</div>
+            <div class="row-title">${escapeHtml(b.title)}</div>
             <div class="row-sub">${b.unlock_quest_id ? `Earned by completing ${escapeHtml(b.unlock_quest_id)}${titleById[b.unlock_quest_id] ? ' · ' + escapeHtml(titleById[b.unlock_quest_id]) : ''}` : 'No quest linked (display only)'} · order ${Number(b.sort_order) || 0}</div>
             ${b.description ? `<div class="row-sub">${escapeHtml(b.description)}</div>` : ''}
           </div>
           <div class="row-actions">
-            <button class="btn btn-ghost" data-badge-edit="${escapeHtml(b.badge_id)}">Edit</button>
-            <button class="btn btn-red" data-badge-delete="${escapeHtml(b.badge_id)}">Delete</button>
+            <button class="btn btn-ghost btn-sm" data-badge-edit="${escapeHtml(b.badge_id)}">Edit</button>
+            <button class="btn btn-danger btn-sm" data-badge-delete="${escapeHtml(b.badge_id)}">Delete</button>
           </div>
         </div>
       `).join('');
@@ -733,8 +874,8 @@
           const id = btn.dataset.badgeDelete;
           if (!confirm(`Delete badge ${id}? It will also be removed from every student who earned it. This cannot be undone.`)) return;
           btn.disabled = true;
-          const { error } = await sb.rpc('admin_delete_badge', { p_teacher_key: teacherKey, p_badge_id: id });
-          if (error) alert(error.message);
+          const { error } = await adminCall('admin_delete_badge', { p_teacher_key: teacherKey, p_badge_id: id }, 'Could not delete the badge');
+          if (!error) toast(`Deleted badge ${id}`);
           loadBadgeAdmin();
         });
       });
@@ -776,7 +917,7 @@
       const id = document.getElementById('bfId').value.trim();
       const title = document.getElementById('bfTitle').value.trim();
       const icon = document.getElementById('bfIcon').value.trim();
-      msg.style.color = '#dc2626';
+      msg.style.color = 'var(--danger-600)';
       if (!/^[A-Za-z0-9_-]{1,30}$/.test(id)) { msg.textContent = 'Badge ID: 1-30 letters, numbers, dashes or underscores.'; return; }
       if (!title) { msg.textContent = 'Enter a title.'; return; }
       if (!icon) { msg.textContent = 'Enter an emoji or short symbol as the icon.'; return; }
@@ -800,7 +941,7 @@
 
       const wasEditing = !!__editingBadgeId;
       resetBadgeForm();
-      msg.style.color = '#16a34a';
+      msg.style.color = 'var(--success-700)';
       msg.textContent = wasEditing ? `Saved ${id}.` : `Added ${id}.`;
       loadBadgeAdmin();
     });
@@ -813,9 +954,22 @@
       'Use the required tool for this quest.',
     ];
 
+    function submissionMedia(s) {
+      if (s.file_path) {
+        const url = escapeHtml(storageUrl(s.file_path));
+        return s.file_type === 'image'
+          ? `<a class="sub-media" href="${url}" target="_blank" rel="noopener noreferrer"><img src="${url}" alt="Submission file" class="submission-thumb" style="max-width:none;max-height:none;margin:0;border:0;border-radius:0"></a>`
+          : `<a class="sub-media" href="${url}" target="_blank" rel="noopener noreferrer"><span>📄<small>View PDF</small></span></a>`;
+      }
+      const link = safeUrl(s.image_or_link);
+      if (link) return `<a class="sub-media" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer"><span>🔗<small>Open link</small></span></a>`;
+      return '<span class="sub-media" aria-hidden="true"><span>✎<small>Text only</small></span></span>';
+    }
+
     async function loadPendingSubmissions() {
       const { data: subs, error } = await sb.rpc('admin_list_pending_submissions', { p_teacher_key: teacherKey });
       if (error) console.error(error);
+      __pendingCount = (subs || []).length;
 
       const list = document.getElementById('pendingList');
 
@@ -824,7 +978,7 @@
       if (active && list.contains(active) && active.tagName === 'INPUT' && active.type !== 'checkbox') return;
 
       if (!subs || subs.length === 0) {
-        list.innerHTML = '<p class="empty">No pending submissions right now.</p>';
+        list.innerHTML = '<p class="empty"><span class="big">✨</span>All caught up — no submissions waiting.</p>';
         __bulkSel.clear();
         updateBulkBar();
         return;
@@ -835,31 +989,36 @@
       list.querySelectorAll('input[id^="xp-"], input[id^="fb-"]').forEach(i => { kept[i.id] = i.value; });
 
       list.innerHTML = subs.map(s => {
-        let fileHtml = '';
-        if (s.file_path) {
-          const publicUrl = escapeHtml(storageUrl(s.file_path));
-          if (s.file_type === 'image') {
-            fileHtml = `<a href="${publicUrl}" target="_blank" rel="noopener noreferrer"><img src="${publicUrl}" alt="Submission file" class="submission-thumb"></a>`;
-          } else {
-            fileHtml = `<a href="${publicUrl}" target="_blank" rel="noopener noreferrer" class="pdf-link">📄 View PDF</a>`;
-          }
-        }
+        const earlier = __reviewedCache.filter(r => r.student_id === s.student_id && r.quest_id === s.quest_id);
+        const attempt = 1 + earlier.filter(r => r.status === 'Needs Iteration').length;
+        const alreadyApproved = earlier.some(r => r.status === 'Approved');
+        const link = safeUrl(s.image_or_link);
+        const text = s.image_or_link
+          ? (link
+              ? `<div class="row-sub link-preview"><a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(s.image_or_link.slice(0, 90))}</a></div>`
+              : `<div class="sub-text">${escapeHtml(s.image_or_link.slice(0, 280))}</div>`)
+          : '';
         return `
-        <div class="row-card" data-sub="${Number(s.submission_id)}">
+        <div class="row-card sub-card" data-sub="${Number(s.submission_id)}">
+          ${submissionMedia(s)}
           <div class="row-main">
             <div class="row-title"><input type="checkbox" class="sel-check" data-sel="${Number(s.submission_id)}" aria-label="Select for bulk approve" ${__bulkSel.has(String(s.submission_id)) ? 'checked' : ''}> ${escapeHtml(s.student_name || 'Unknown')} — ${escapeHtml(s.quest_title || s.quest_id)}</div>
-            ${s.image_or_link ? `<div class="row-sub link-preview">${escapeHtml(s.image_or_link.slice(0, 80))}</div>` : ''}
-            ${fileHtml}
-            <input type="text" class="fb-input" id="fb-${Number(s.submission_id)}" maxlength="300" placeholder="Feedback for the student (optional)">
+            <div class="sub-tags">
+              <span class="tag pending">Pending</span>
+              <span class="tag">${escapeHtml(s.quest_id)}</span>
+              ${attempt > 1 ? `<span class="tag brand">Attempt ${attempt}</span>` : ''}
+              ${alreadyApproved ? '<span class="tag bad">Already approved once — approving again is blocked</span>' : ''}
+            </div>
+            ${text}
+            <input type="text" class="input fb-input" id="fb-${Number(s.submission_id)}" maxlength="300" placeholder="Feedback for the student (optional)">
             <div class="fb-chips">
               ${FEEDBACK_CHIPS.map(t => `<button type="button" class="chip" data-fb-for="${Number(s.submission_id)}" data-text="${escapeHtml(t)}">${escapeHtml(t)}</button>`).join('')}
             </div>
           </div>
-          <span class="tag pending">Pending</span>
-          <div class="row-actions">
-            <input type="number" class="xp-input" value="${Number(s.quest_points_xp) || 0}" id="xp-${Number(s.submission_id)}">
-            <button class="btn btn-green" data-approve="${Number(s.submission_id)}">Approve</button>
-            <button class="btn btn-red" data-reject="${Number(s.submission_id)}">Needs Work</button>
+          <div class="row-actions sub-actions">
+            <label class="xp-field">XP <input type="number" class="input xp-input" value="${Number(s.quest_points_xp) || 0}" id="xp-${Number(s.submission_id)}"></label>
+            <button class="btn btn-success" data-approve="${Number(s.submission_id)}">Approve</button>
+            <button class="btn btn-danger" data-reject="${Number(s.submission_id)}">Needs work</button>
           </div>
         </div>
       `;
@@ -905,9 +1064,10 @@
         });
         if (error) {
           btn.disabled = false;
-          alert('Could not save the review: ' + error.message);
+          toast('Could not save the review: ' + error.message, 'bad');
           return;
         }
+        toast(status === 'Approved' ? `Approved · +${xp} XP` : 'Sent back for another try');
         refreshAll();
       }
 
@@ -981,7 +1141,7 @@
         if (error) failures.push(error.message); else { done++; __bulkSel.delete(job.id); }
       }
       __bulkBusy = false;
-      status.style.color = failures.length ? '#dc2626' : '#16a34a';
+      status.style.color = failures.length ? 'var(--danger-600)' : 'var(--success-700)';
       status.textContent = failures.length
         ? `Approved ${done} of ${jobs.length}. ${failures.length} failed: ${failures[0]}`
         : `Approved ${done} submission${done === 1 ? '' : 's'}.`;
@@ -1019,6 +1179,7 @@
     document.addEventListener('keydown', (e) => {
       if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
       if (document.getElementById('app').style.display !== 'block') return; // not logged in
+      if (document.getElementById('studentModal') || document.getElementById('editModal')) return;
       const t = e.target;
       const typing = t && ((t.tagName === 'INPUT' && t.type !== 'checkbox') || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
       if (typing) {
@@ -1047,10 +1208,13 @@
       }
     });
 
-    // ---------- Reviewed submissions (read-only history) ----------
+    // ---------- Reviewed submissions (read-only history with undo) ----------
+    let __reviewedCache = [];
+
     async function loadReviewedSubmissions() {
       const { data: subs, error } = await sb.rpc('admin_list_reviewed_submissions', { p_teacher_key: teacherKey });
       if (error) console.error(error);
+      __reviewedCache = subs || [];
 
       const list = document.getElementById('reviewedList');
       if (!subs || subs.length === 0) { list.innerHTML = '<p class="empty">No submissions reviewed yet.</p>'; return; }
@@ -1058,8 +1222,14 @@
       list.innerHTML = subs.map(s => {
         const when = s.reviewed_at ? new Date(s.reviewed_at).toLocaleString() : '';
         const isApproved = s.status === 'Approved';
+        let media = '';
+        if (s.file_path && s.file_type === 'image') {
+          const url = escapeHtml(storageUrl(s.file_path));
+          media = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="flex:none"><img src="${url}" alt="" style="width:64px;height:48px;object-fit:cover;border-radius:8px;display:block" loading="lazy"></a>`;
+        }
         return `
         <div class="row-card">
+          ${media}
           <div class="row-main">
             <div class="row-title">${escapeHtml(s.student_name || 'Unknown')} — ${escapeHtml(s.quest_title || s.quest_id)}</div>
             ${s.image_or_link ? `<div class="row-sub link-preview">${escapeHtml(s.image_or_link.slice(0, 80))}</div>` : ''}
@@ -1068,7 +1238,7 @@
           </div>
           <span class="tag ${isApproved ? 'approved' : 'iteration'}">${isApproved ? `Approved · +${Number(s.xp_awarded) || 0} XP` : 'Needs Iteration'}</span>
           <div class="row-actions">
-            <button class="btn btn-ghost" data-undo-review="${Number(s.submission_id)}" title="Send this back to Pending">Undo</button>
+            <button class="btn btn-ghost btn-sm" data-undo-review="${Number(s.submission_id)}" title="Send this back to Pending">Undo</button>
           </div>
         </div>
       `;
@@ -1079,7 +1249,8 @@
           if (!confirm('Undo this review?\n\nThe submission goes back to Pending, the XP is taken back, and any badge it earned is removed (unless another approved submission still earns it).')) return;
           btn.disabled = true;
           const { error } = await sb.rpc('undo_review', { p_teacher_key: teacherKey, p_submission_id: parseInt(btn.dataset.undoReview) });
-          if (error) { btn.disabled = false; alert('Could not undo: ' + error.message); return; }
+          if (error) { btn.disabled = false; toast('Could not undo: ' + error.message, 'bad'); return; }
+          toast('Review undone — it is back in the queue');
           refreshAll();
         });
       });
@@ -1108,7 +1279,7 @@
       const pagination = document.getElementById('studentPagination');
 
       if (!filtered || filtered.length === 0) {
-        list.innerHTML = `<p class="empty">${query || __studentFilter !== 'all' ? 'No students match.' : 'No students yet — add one above.'}</p>`;
+        list.innerHTML = `<p class="empty">${query || __studentFilter !== 'all' ? 'No students match.' : 'No students yet — add one below.'}</p>`;
         pagination.innerHTML = '';
         return;
       }
@@ -1118,9 +1289,9 @@
       const pageItems = filtered.slice((__studentPage - 1) * STUDENTS_PER_PAGE, __studentPage * STUDENTS_PER_PAGE);
 
       pagination.innerHTML = totalPages <= 1 ? '' : `
-        <button class="btn btn-ghost" id="studentPrevPage" ${__studentPage === 1 ? 'disabled' : ''}>← Prev</button>
-        <span style="font-size:0.85rem; color:var(--gray);">Page ${__studentPage} of ${totalPages} (${filtered.length} students)</span>
-        <button class="btn btn-ghost" id="studentNextPage" ${__studentPage === totalPages ? 'disabled' : ''}>Next →</button>
+        <button class="btn btn-ghost btn-sm" id="studentPrevPage" ${__studentPage === 1 ? 'disabled' : ''}>← Prev</button>
+        <span style="font-size:0.85rem; color:var(--ink-500);">Page ${__studentPage} of ${totalPages} (${filtered.length} students)</span>
+        <button class="btn btn-ghost btn-sm" id="studentNextPage" ${__studentPage === totalPages ? 'disabled' : ''}>Next →</button>
       `;
       const prevBtn = document.getElementById('studentPrevPage');
       const nextBtn = document.getElementById('studentNextPage');
@@ -1128,18 +1299,19 @@
       if (nextBtn) nextBtn.addEventListener('click', () => { __studentPage++; renderStudentList(); });
 
       list.innerHTML = pageItems.map(s => `
-        <div class="row-card" style="${s.is_active ? '' : 'opacity:0.55;'}">
+        <div class="row-card${s.is_active ? '' : ' inactive'}">
+          <span class="av" aria-hidden="true">${initial(s.name)}</span>
           <div class="row-main">
-            <div class="row-title">${escapeHtml(s.name)} ${s.is_active ? '' : '<span class="tag inactive" style="margin-left:6px;">Deactivated</span>'}</div>
-            <div class="row-sub">${escapeHtml(s.studio_role || '')} · ${escapeHtml(s.tier_level)} · ${Number(s.total_xp) || 0} XP · PIN ${escapeHtml(s.pin_code || '—')}</div>
+            <div class="row-title">${escapeHtml(s.name)} ${s.is_active ? '' : '<span class="tag inactive">Deactivated</span>'}</div>
+            <div class="row-sub">${escapeHtml(s.studio_role || 'No role')} · <span class="tag gold" style="font-size:0.66rem">${escapeHtml(s.tier_level)}</span> · <span class="xpv">${Number(s.total_xp) || 0} XP</span> · <span class="pin">PIN ${escapeHtml(s.pin_code || '—')}</span></div>
           </div>
           <div class="row-actions">
-            <button class="btn btn-ghost" data-quickxp="${Number(s.student_id)}" data-amount="10">+10</button>
-            <button class="btn btn-ghost" data-quickxp="${Number(s.student_id)}" data-amount="25">+25</button>
-            <button class="btn btn-ghost" data-detail="${Number(s.student_id)}">Details</button>
-            <button class="btn btn-ghost" data-edit="${Number(s.student_id)}">Edit</button>
-            <button class="btn ${s.is_active ? 'btn-ghost' : 'btn-green'}" data-toggleactive="${Number(s.student_id)}" data-newactive="${s.is_active ? 'false' : 'true'}">${s.is_active ? 'Deactivate' : 'Reactivate'}</button>
-            <button class="btn btn-red" data-delete="${Number(s.student_id)}">Delete</button>
+            <button class="btn btn-soft btn-sm" data-quickxp="${Number(s.student_id)}" data-amount="10" title="Quick award">+10</button>
+            <button class="btn btn-soft btn-sm" data-quickxp="${Number(s.student_id)}" data-amount="25" title="Quick award">+25</button>
+            <button class="btn btn-ghost btn-sm" data-detail="${Number(s.student_id)}">Details</button>
+            <button class="btn btn-ghost btn-sm" data-edit="${Number(s.student_id)}">Edit</button>
+            <button class="btn btn-sm ${s.is_active ? 'btn-ghost' : 'btn-success'}" data-toggleactive="${Number(s.student_id)}" data-newactive="${s.is_active ? 'false' : 'true'}">${s.is_active ? 'Deactivate' : 'Reactivate'}</button>
+            <button class="btn btn-danger btn-sm" data-delete="${Number(s.student_id)}">Delete</button>
           </div>
         </div>
       `).join('');
@@ -1147,12 +1319,14 @@
       list.querySelectorAll('button[data-quickxp]').forEach(btn => {
         btn.addEventListener('click', async () => {
           btn.disabled = true;
-          const { error } = await sb.rpc('award_quick_xp', {
+          const id = parseInt(btn.dataset.quickxp);
+          const student = __allStudents.find(s => s.student_id === id);
+          const { error } = await adminCall('award_quick_xp', {
             p_teacher_key: teacherKey,
-            p_student_id: parseInt(btn.dataset.quickxp),
+            p_student_id: id,
             p_xp: parseInt(btn.dataset.amount),
-          });
-          if (error) alert('Could not award XP: ' + error.message);
+          }, 'Could not award XP');
+          if (!error) toast(`+${btn.dataset.amount} XP to ${student ? student.name : 'student'}`);
           refreshStudents();
         });
       });
@@ -1160,11 +1334,13 @@
       list.querySelectorAll('button[data-toggleactive]').forEach(btn => {
         btn.addEventListener('click', async () => {
           btn.disabled = true;
-          await sb.rpc('set_student_active', {
+          const reactivate = btn.dataset.newactive === 'true';
+          const { error } = await adminCall('set_student_active', {
             p_teacher_key: teacherKey,
             p_student_id: parseInt(btn.dataset.toggleactive),
-            p_active: btn.dataset.newactive === 'true',
-          });
+            p_active: reactivate,
+          }, 'Could not change access');
+          if (!error) toast(reactivate ? 'Student reactivated' : 'Student deactivated — they are signed out on their next refresh');
           refreshStudents();
         });
       });
@@ -1173,10 +1349,10 @@
         btn.addEventListener('click', async () => {
           const id = parseInt(btn.dataset.delete);
           const student = __allStudents.find(s => s.student_id === id);
-          if (!confirm(`Permanently delete ${student ? student.name : 'this student'}? This also deletes all their submissions and cannot be undone.\\n\\nClick Cancel if you only want to deactivate them instead.`)) return;
+          if (!confirm(`Permanently delete ${student ? student.name : 'this student'}? This also deletes all their submissions and cannot be undone.\n\nClick Cancel if you only want to deactivate them instead.`)) return;
           btn.disabled = true;
-          const { error } = await sb.rpc('delete_student', { p_teacher_key: teacherKey, p_student_id: id });
-          if (error) { alert('Could not delete student.'); console.error(error); }
+          const { error } = await adminCall('delete_student', { p_teacher_key: teacherKey, p_student_id: id }, 'Could not delete student');
+          if (!error) toast(`Deleted ${student ? student.name : 'student'}`);
           refreshStudents();
         });
       });
@@ -1186,30 +1362,65 @@
       });
 
       list.querySelectorAll('button[data-edit]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const id = parseInt(btn.dataset.edit);
-          const student = __allStudents.find(s => s.student_id === id);
-          if (!student) return;
-          const newName = prompt('Full name:', student.name);
-          if (newName === null) return;
-          const newRole = prompt('Studio role:', student.studio_role || '');
-          if (newRole === null) return;
-          const newPin = prompt('4-digit PIN:', student.pin_code || '');
-          if (newPin === null) return;
-          if (!/^\d{4}$/.test(newPin)) { alert('PIN must be exactly 4 digits.'); return; }
-
-          sb.rpc('update_student', {
-            p_teacher_key: teacherKey,
-            p_student_id: id,
-            p_name: newName.trim(),
-            p_studio_role: newRole.trim(),
-            p_pin: newPin,
-          }).then(({ error }) => {
-            if (error) { alert('Could not update student (PIN may already be in use).'); console.error(error); }
-            refreshStudents();
-          });
-        });
+        btn.addEventListener('click', () => openEditStudent(parseInt(btn.dataset.edit)));
       });
+    }
+
+    // ---------- Edit student (one form instead of three prompt boxes) ----------
+    function closeEditStudent() {
+      const m = document.getElementById('editModal');
+      if (m) m.remove();
+    }
+
+    function openEditStudent(id) {
+      const student = __allStudents.find(s => s.student_id === id);
+      if (!student) return;
+      closeEditStudent();
+      const modal = document.createElement('div');
+      modal.id = 'editModal';
+      modal.className = 'modal-backdrop';
+      modal.setAttribute('role', 'dialog');
+      modal.setAttribute('aria-label', 'Edit student');
+      modal.innerHTML = `<form class="modal-card" style="max-width:460px" id="editForm" novalidate>
+          <button type="button" class="modal-close" aria-label="Close">✕</button>
+          <span class="eyebrow">Edit student</span>
+          <h3 class="detail-name" style="margin:0.25rem 0 1rem">${escapeHtml(student.name)}</h3>
+          <div style="display:flex; flex-direction:column; gap:0.8rem">
+            <label class="field"><span>Full name</span><input class="input" id="editName" maxlength="80"></label>
+            <label class="field"><span>Studio role</span><input class="input" id="editRole" maxlength="80"></label>
+            <label class="field"><span>4-digit PIN</span><input class="input" id="editPin" maxlength="4" inputmode="numeric" style="font-family:var(--font-mono); letter-spacing:0.3em; max-width:140px"></label>
+            <p class="kb-hint" style="margin:0">Changing the PIN signs the student out everywhere; give them the new one.</p>
+          </div>
+          <div id="editMsg" class="form-msg is-error"></div>
+          <div class="bulk-actions" style="justify-content:flex-end; margin-top:0.6rem">
+            <button type="button" class="btn btn-ghost" id="editCancel">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="editSave">Save changes</button>
+          </div>
+        </form>`;
+      document.body.appendChild(modal);
+      document.getElementById('editName').value = student.name || '';
+      document.getElementById('editRole').value = student.studio_role || '';
+      document.getElementById('editPin').value = student.pin_code || '';
+      modal.addEventListener('click', (e) => { if (e.target === modal || e.target.classList.contains('modal-close') || e.target.id === 'editCancel') closeEditStudent(); });
+      document.getElementById('editForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('editName').value.trim();
+        const role = document.getElementById('editRole').value.trim();
+        const pin = document.getElementById('editPin').value.trim();
+        const msg = document.getElementById('editMsg');
+        if (!name) { msg.textContent = 'Enter a name.'; return; }
+        if (!/^\d{4}$/.test(pin)) { msg.textContent = 'PIN must be exactly 4 digits.'; return; }
+        if (__allStudents.some(s => s.student_id !== id && s.pin_code === pin)) { msg.textContent = 'Another student already uses that PIN.'; return; }
+        const btn = document.getElementById('editSave');
+        btn.disabled = true;
+        const { error } = await sb.rpc('update_student', { p_teacher_key: teacherKey, p_student_id: id, p_name: name, p_studio_role: role, p_pin: pin });
+        btn.disabled = false;
+        if (error) { msg.textContent = 'Could not update the student (the PIN may already be in use).'; console.error(error); return; }
+        closeEditStudent();
+        toast(`Saved ${name}`);
+        refreshStudents();
+      });
+      try { document.getElementById('editName').focus(); } catch (e) { /* ignore */ }
     }
 
     document.getElementById('studentSearch').addEventListener('input', () => {
@@ -1232,26 +1443,14 @@
     // ---------- Add student ----------
     document.getElementById('addStudentBtn').addEventListener('click', async () => {
       const name = document.getElementById('newName').value.trim();
-
       const role = document.getElementById('newRole').value.trim();
       const pin = document.getElementById('newPin').value.trim();
       const msg = document.getElementById('addStudentMsg');
 
-      if (!name && pin.length !== 4) {
-        msg.style.color = '#dc2626';
-        msg.textContent = 'Please fill in the Full Name and 4-digit PIN fields.';
-        return;
-      }
-      if (!name) {
-        msg.style.color = '#dc2626';
-        msg.textContent = 'Full Name is empty — check you typed it in the first box.';
-        return;
-      }
-      if (pin.length !== 4) {
-        msg.style.color = '#dc2626';
-        msg.textContent = 'PIN must be exactly 4 digits.';
-        return;
-      }
+      msg.className = 'form-msg is-error';
+      if (!name && pin.length !== 4) { msg.textContent = 'Please fill in the Full Name and 4-digit PIN fields.'; return; }
+      if (!name) { msg.textContent = 'Full Name is empty — check you typed it in the first box.'; return; }
+      if (!/^\d{4}$/.test(pin)) { msg.textContent = 'PIN must be exactly 4 digits.'; return; }
 
       const { error } = await sb.rpc('create_student', {
         p_teacher_key: teacherKey,
@@ -1261,13 +1460,12 @@
       });
 
       if (error) {
-        msg.style.color = '#dc2626';
         msg.textContent = 'Could not add student (PIN may already be in use).';
         console.error(error);
         return;
       }
 
-      msg.style.color = '#16a34a';
+      msg.className = 'form-msg is-ok';
       msg.textContent = `Added ${name} with PIN ${pin}.`;
       document.getElementById('newName').value = '';
       document.getElementById('newRole').value = '';
@@ -1291,13 +1489,13 @@
         .filter(row => row.name.length > 0);
 
       if (rows.length === 0) {
-        msg.style.color = '#dc2626';
+        msg.className = 'form-msg is-error';
         msg.textContent = 'Paste at least one line as "Full Name, Studio Role".';
         return;
       }
 
       btn.disabled = true;
-      btn.textContent = 'Importing...';
+      btn.textContent = 'Importing…';
 
       const { data, error } = await sb.rpc('bulk_create_students', {
         p_teacher_key: teacherKey,
@@ -1308,13 +1506,13 @@
       btn.textContent = 'Import students';
 
       if (error) {
-        msg.style.color = '#dc2626';
+        msg.className = 'form-msg is-error';
         msg.textContent = 'Import failed. Please check the format and try again.';
         console.error(error);
         return;
       }
 
-      msg.style.color = '#16a34a';
+      msg.className = 'form-msg is-ok';
       msg.innerHTML = `Imported ${data.length} student${data.length === 1 ? '' : 's'}:<br>` +
         data.map(s => `${escapeHtml(s.name)} — PIN <strong style="font-family:ui-monospace,monospace;">${escapeHtml(s.assigned_pin)}</strong>`).join('<br>');
       document.getElementById('bulkImportInput').value = '';
@@ -1323,27 +1521,37 @@
 
     // ---------- Live Timer ----------
     async function refreshTimerStatus() {
+      if (!teacherKey) return;
       const { data } = await sb.rpc('get_timer');
       const row = data && data[0];
       const status = document.getElementById('timerStatus');
+      status.classList.remove('running');
       if (!row || !row.ends_at) { status.textContent = 'No timer running.'; return; }
       const ends = new Date(row.ends_at);
       const secsLeft = Math.floor((ends - new Date()) / 1000);
       if (secsLeft <= 0) { status.textContent = 'Timer finished.'; return; }
       const m = Math.floor(secsLeft / 60), s = secsLeft % 60;
-      status.textContent = `"${row.label}" — ${m}:${String(s).padStart(2, '0')} remaining`;
+      status.classList.add('running');
+      status.innerHTML = `<span class="live-dot"></span><span></span>`;
+      status.lastChild.textContent = `“${row.label}” — ${m}:${String(s).padStart(2, '0')} remaining`;
     }
+
+    document.querySelectorAll('#timerPresets .chip').forEach(chip => {
+      chip.addEventListener('click', () => { document.getElementById('timerMinutesInput').value = chip.dataset.min; });
+    });
 
     document.getElementById('startTimerBtn').addEventListener('click', async () => {
       const label = document.getElementById('timerLabelInput').value.trim() || 'Time remaining';
       const minutes = parseInt(document.getElementById('timerMinutesInput').value);
-      if (!minutes || minutes <= 0) { alert('Enter a number of minutes.'); return; }
-      await sb.rpc('set_timer', { p_teacher_key: teacherKey, p_minutes: minutes, p_label: label });
+      if (!minutes || minutes <= 0) { toast('Enter a number of minutes, or pick a preset.', 'bad'); return; }
+      const { error } = await adminCall('set_timer', { p_teacher_key: teacherKey, p_minutes: minutes, p_label: label }, 'Could not start the timer');
+      if (!error) toast(`Timer started: ${minutes} min`);
       refreshTimerStatus();
     });
 
     document.getElementById('stopTimerBtn').addEventListener('click', async () => {
-      await sb.rpc('set_timer', { p_teacher_key: teacherKey, p_minutes: 0, p_label: '' });
+      const { error } = await adminCall('set_timer', { p_teacher_key: teacherKey, p_minutes: 0, p_label: '' }, 'Could not stop the timer');
+      if (!error) toast('Timer stopped');
       refreshTimerStatus();
     });
 
@@ -1351,8 +1559,9 @@
     async function bulkSetQuests(prefix, status) {
       const { data: quests } = await sb.from('quests').select('quest_id');
       const ids = (quests || []).map(q => q.quest_id).filter(id => prefix ? id.startsWith(prefix) : true);
-      if (ids.length === 0) return;
-      await sb.rpc('set_quests_status_bulk', { p_teacher_key: teacherKey, p_quest_ids: ids, p_status: status });
+      if (ids.length === 0) { toast(prefix ? `No quests start with ${prefix}` : 'No quests found', 'bad'); return; }
+      const { error } = await adminCall('set_quests_status_bulk', { p_teacher_key: teacherKey, p_quest_ids: ids, p_status: status }, 'Could not update quests');
+      if (!error) toast(`${ids.length} quest${ids.length === 1 ? '' : 's'} set to ${status}`);
       loadQuests();
     }
 
@@ -1366,7 +1575,9 @@
       __allStudents.forEach(s => {
         rows.push([s.name, s.studio_role || '', s.pin_code || '', s.tier_level, s.total_xp, s.is_active ? 'Yes' : 'No']);
       });
-      const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+      // A leading =, +, - or @ would run as a formula in spreadsheet apps.
+      const cell = v => { let t = String(v ?? ''); if (/^[=+\-@]/.test(t)) t = "'" + t; return `"${t.replace(/"/g, '""')}"`; };
+      const csv = rows.map(r => r.map(cell).join(',')).join('\n');
       const blob = new Blob([csv], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -1377,7 +1588,6 @@
     });
 
     // ---------- Student detail: profile, badges and full submission timeline ----------
-    // Built from the teacher-gated RPCs the page already uses, so it needs no new database access.
     let __detailToken = 0;
 
     function closeStudentDetail() {
@@ -1402,7 +1612,7 @@
       modal.className = 'modal-backdrop';
       modal.setAttribute('role', 'dialog');
       modal.setAttribute('aria-label', 'Student details');
-      modal.innerHTML = '<div class="modal-card"><button type="button" class="modal-close" aria-label="Close">✕</button><div id="studentModalBody"><p class="empty">Loading…</p></div></div>';
+      modal.innerHTML = '<div class="modal-card"><button type="button" class="modal-close" aria-label="Close">✕</button><div id="studentModalBody"><div class="skeleton" style="height:220px"></div></div></div>';
       modal.addEventListener('click', (e) => { if (e.target === modal || e.target.classList.contains('modal-close')) closeStudentDetail(); });
       document.body.appendChild(modal);
 
@@ -1436,7 +1646,7 @@
           : s.status === 'Pending Review' ? '<span class="tag pending">Pending</span>' : '<span class="tag iteration">Needs Iteration</span>';
         let extra = '';
         if (s.image_or_link) {
-          const link = /^https?:\/\//i.test(s.image_or_link.trim()) ? s.image_or_link.trim() : '';
+          const link = safeUrl(s.image_or_link);
           extra += link
             ? `<div class="row-sub link-preview"><a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(s.image_or_link.slice(0, 90))}</a></div>`
             : `<div class="row-sub link-preview">${escapeHtml(s.image_or_link.slice(0, 90))}</div>`;
@@ -1470,13 +1680,14 @@
                 <span class="xp-delta ${d >= 0 ? 'plus' : 'minus'}">${d > 0 ? '+' : ''}${d}</span>
                 <span class="xp-what">${escapeHtml(e.reason)}${e.quest_title ? ' · ' + escapeHtml(e.quest_title) : ''}${e.undone ? ' (undone)' : ''}</span>
                 <span class="row-sub">${escapeHtml(shortDate(e.created_at))}</span>
-                ${e.reason === 'Quick award' && !e.undone ? `<button class="btn btn-ghost" data-undo-xp="${Number(e.id)}">Undo</button>` : ''}
+                ${e.reason === 'Quick award' && !e.undone ? `<button class="btn btn-ghost btn-sm" data-undo-xp="${Number(e.id)}">Undo</button>` : ''}
               </div>`;
           }).join('') || '<p class="row-sub">No XP changes recorded yet.</p>');
 
       body.innerHTML = `
+        <span class="eyebrow">Student</span>
         <h3 class="detail-name">${escapeHtml(student.name)} ${student.is_active ? '' : '<span class="tag inactive">Deactivated</span>'}</h3>
-        <div class="row-sub">${escapeHtml(student.studio_role || 'No role given')} · ${escapeHtml(student.tier_level)} · ${Number(student.total_xp) || 0} XP · PIN ${escapeHtml(student.pin_code || '—')}</div>
+        <div class="row-sub">${escapeHtml(student.studio_role || 'No role given')} · ${escapeHtml(student.tier_level)} · ${Number(student.total_xp) || 0} XP · <span class="pin">PIN ${escapeHtml(student.pin_code || '—')}</span></div>
         <div class="detail-stats">
           <div><strong>${approved.length}</strong><span>approved</span></div>
           <div><strong>${pendingCount}</strong><span>pending</span></div>
@@ -1497,19 +1708,20 @@
           if (!confirm('Undo this XP award? The XP is taken back from the student.')) return;
           btn.disabled = true;
           const { error } = await sb.rpc('undo_quick_xp', { p_teacher_key: teacherKey, p_ledger_id: parseInt(btn.dataset.undoXp) });
-          if (error) { btn.disabled = false; alert('Could not undo: ' + error.message); return; }
+          if (error) { btn.disabled = false; toast('Could not undo: ' + error.message, 'bad'); return; }
+          toast('XP award undone');
           refreshStudents();
           openStudentDetail(id); // reload the panel with the corrected XP
         });
       });
     }
 
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeStudentDetail(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeStudentDetail(); closeEditStudent(); } });
 
     // ---------- Printable PIN cards (one card per active student) ----------
     document.getElementById('printPinCardsBtn').addEventListener('click', () => {
       const active = __allStudents.filter(s => s.is_active && s.pin_code);
-      if (active.length === 0) { alert('There are no active students with a PIN yet.'); return; }
+      if (active.length === 0) { toast('There are no active students with a PIN yet.', 'bad'); return; }
 
       const loginUrl = new URL('index.html', location.href).href;
       const cards = active
@@ -1530,18 +1742,19 @@
 <head>
 <meta charset="UTF-8">
 <title>Cindrebay AI Campus — PIN cards</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,560&family=Inter:wght@400..700&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
 <style>
-  body { font-family: -apple-system, 'Inter', sans-serif; margin: 0; padding: 1rem; color: #1f2937; }
-  .bar { margin-bottom: 1rem; font-size: 0.9rem; }
-  .bar button { padding: 6px 14px; border-radius: 6px; border: 1px solid #d1d5db; background: #B74094; color: white; font-weight: 600; cursor: pointer; }
-  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.6rem; }
-  .card { border: 1.5px dashed #9ca3af; border-radius: 10px; padding: 0.9rem 1rem; text-align: center; break-inside: avoid; }
-  .brand { font-size: 0.7rem; font-weight: 700; color: #B74094; text-transform: uppercase; letter-spacing: 0.06em; }
-  .name { font-size: 1.15rem; font-weight: 700; margin-top: 0.3rem; }
-  .role { font-size: 0.8rem; color: #6b7280; min-height: 1em; }
-  .label { font-size: 0.65rem; color: #6b7280; margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.06em; }
-  .pin { font-family: ui-monospace, monospace; font-size: 2rem; font-weight: 700; letter-spacing: 0.25em; }
-  .url { font-size: 0.65rem; color: #6b7280; margin-top: 0.4rem; word-break: break-all; }
+  body { font-family: 'Inter', -apple-system, sans-serif; margin: 0; padding: 1rem; color: #211f22; }
+  .bar { margin-bottom: 1rem; font-size: 0.9rem; display: flex; align-items: center; gap: 0.8rem; }
+  .bar button { padding: 8px 16px; border-radius: 8px; border: 0; background: #B74094; color: white; font-weight: 700; cursor: pointer; }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.7rem; }
+  .card { border: 1.5px dashed #cbc7cc; border-radius: 14px; padding: 1rem; text-align: center; break-inside: avoid; }
+  .brand { font-size: 0.66rem; font-weight: 800; color: #B74094; text-transform: uppercase; letter-spacing: 0.14em; }
+  .name { font-family: 'Fraunces', Georgia, serif; font-weight: 560; font-size: 1.35rem; margin-top: 0.3rem; }
+  .role { font-size: 0.8rem; color: #6f6d72; min-height: 1em; }
+  .label { font-size: 0.62rem; color: #6f6d72; margin-top: 0.7rem; text-transform: uppercase; letter-spacing: 0.12em; }
+  .pin { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 2.1rem; font-weight: 700; letter-spacing: 0.3em; color: #8f3175; }
+  .url { font-size: 0.64rem; color: #6f6d72; margin-top: 0.4rem; word-break: break-all; }
   @media print { .bar { display: none; } body { padding: 0; } }
 </style>
 </head>
@@ -1558,23 +1771,19 @@
     });
 
     // ---------- End-of-course showcase export ----------
-    function escapeHtml(str) {
-      return String(str || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    }
-
     document.getElementById('downloadShowcaseBtn').addEventListener('click', async () => {
       const btn = document.getElementById('downloadShowcaseBtn');
       const msg = document.getElementById('showcaseMsg');
       btn.disabled = true;
-      btn.textContent = 'Building...';
+      btn.textContent = 'Building…';
 
       const { data, error } = await sb.rpc('admin_list_reviewed_submissions', { p_teacher_key: teacherKey });
 
       btn.disabled = false;
-      btn.textContent = 'Download Showcase Page';
+      btn.textContent = 'Download showcase page';
 
       if (error) {
-        msg.style.color = '#dc2626';
+        msg.style.color = 'var(--danger-600)';
         msg.textContent = 'Could not build the showcase. Please try again.';
         console.error(error);
         return;
@@ -1585,7 +1794,7 @@
         .sort((a, b) => (a.student_name || '').localeCompare(b.student_name || ''));
 
       if (approved.length === 0) {
-        msg.style.color = '#dc2626';
+        msg.style.color = 'var(--danger-600)';
         msg.textContent = 'No approved work to showcase yet.';
         return;
       }
@@ -1615,26 +1824,34 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cindrebay AI Campus — Course Showcase</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400&family=Inter:wght@400..700&display=swap" rel="stylesheet">
 <style>
-  body { font-family: -apple-system, 'Inter', sans-serif; background: #fbeef7; margin: 0; padding: 2.5rem 1.5rem; color: #424143; }
-  h1 { text-align: center; margin: 0 0 0.5rem; }
-  p.sub { text-align: center; color: #6b7280; margin: 0 0 2rem; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; max-width: 1100px; margin: 0 auto; }
-  .card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgb(0 0 0 / 0.08); }
-  .card img { width: 100%; height: 160px; object-fit: cover; display: block; }
+  body { font-family: 'Inter', -apple-system, sans-serif; background: #fbf8fa; margin: 0; padding: 3rem 1.5rem; color: #211f22; }
+  header { text-align: center; margin: 0 auto 2.5rem; max-width: 760px; }
+  .eyebrow { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #a2377f; }
+  h1 { font-family: 'Fraunces', Georgia, serif; font-weight: 560; font-size: 3.2rem; letter-spacing: -0.02em; margin: 0.4rem 0 0.4rem; }
+  h1 em { color: #B74094; }
+  p.sub { color: #6f6d72; margin: 0; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1.1rem; max-width: 1200px; margin: 0 auto; }
+  .card { background: white; border-radius: 18px; overflow: hidden; box-shadow: 0 1px 2px rgb(36 9 28 / .05), 0 12px 32px -12px rgb(36 9 28 / .18); }
+  .card img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; }
   .pdf-tile, .link-tile {
-    height: 160px; display: flex; align-items: center; justify-content: center; text-align: center;
-    background: #fbeef7; color: #B74094; text-decoration: none; padding: 0.75rem; font-size: 0.9rem; word-break: break-word;
+    aspect-ratio: 4 / 3; display: flex; align-items: center; justify-content: center; text-align: center;
+    background: #fbeef7; color: #8f3175; text-decoration: none; padding: 1rem; font-size: 0.9rem; word-break: break-word; box-sizing: border-box;
   }
-  .meta { padding: 0.75rem 0.9rem; }
-  .who { font-weight: 700; font-size: 0.95rem; }
-  .what { font-size: 0.8rem; color: #6b7280; margin-top: 2px; }
+  .meta { padding: 0.9rem 1rem 1rem; }
+  .who { font-family: 'Fraunces', Georgia, serif; font-weight: 560; font-size: 1.15rem; }
+  .what { font-size: 0.82rem; color: #6f6d72; margin-top: 2px; }
 </style>
 </head>
 <body>
-  <h1>Cindrebay AI Campus — Course Showcase</h1>
-  <p class="sub">${approved.length} approved submission${approved.length === 1 ? '' : 's'} · generated ${new Date().toLocaleDateString()}</p>
+  <header>
+    <div class="eyebrow">Cindrebay School of Design · AI Campus</div>
+    <h1>Course <em>Showcase</em></h1>
+    <p class="sub">${approved.length} approved submission${approved.length === 1 ? '' : 's'} · generated ${new Date().toLocaleDateString()}</p>
+  </header>
   <div class="grid">${cards}</div>
 </body>
 </html>`;
@@ -1647,7 +1864,7 @@
       a.click();
       URL.revokeObjectURL(url);
 
-      msg.style.color = '#16a34a';
+      msg.style.color = 'var(--success-700)';
       msg.textContent = `Downloaded showcase with ${approved.length} entries.`;
     });
 
